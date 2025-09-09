@@ -154,7 +154,11 @@ const OrdersManagement = () => {
 
   const getDisplayItems = (o: OrderItem) => {
     if (!o) return o.items || [];
-    const c = o.contractId ? contractsMap[o.contractId] : null;
+    let c = o.contractId ? contractsMap[o.contractId] : null;
+    if (!c && o.customer_email) {
+      const key = String(o.customer_email).toLowerCase().trim();
+      c = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+    }
     if (c && Array.isArray(c.storeItems) && c.storeItems.length) {
       const names = new Set((c.storeItems || []).map((it: any) => normalize(String(it.name || ''))));
       return (o.items || []).filter(it => names.has(normalize(String(it.name || it.product_id || it.productId || ''))));
