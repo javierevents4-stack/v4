@@ -246,6 +246,44 @@ const OrdersManagement = () => {
 
   const colorsFor = (len: number) => categoryColors(len);
 
+  const autoLinkOrders = async () => {
+    if (!confirm('Vincular órdenes sin contractId a contratos coincidentes por email o productos?')) return;
+    setLinking(true);
+    try {
+      const toProcess = (orders || []).filter(o => !o.contractId);
+      let count = 0;
+      for (const o of toProcess) {
+        let target: any = null;
+        if (o.customer_email) {
+          const key = String(o.customer_email).toLowerCase().trim();
+          target = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+        }
+        if (!target) {
+          const onames = new Set((o.items || []).map(it => String(it.name || it.product_id || it.productId || '').toLowerCase().trim()));
+          target = Object.values(contractsMap).find((c: any) => Array.isArray(c.storeItems) && c.storeItems.some((si: any)=> onames.has(String(si.name||'').toLowerCase().trim())) );
+        }
+        if (target) {
+          try {
+            await updateDoc(doc(db,'orders', o.id), { contractId: target.id } as any);
+            count++;
+          } catch (e) {
+            console.warn('Error linking order', o.id, e);
+          }
+        }
+      }
+      await fetchOrders();
+      const snap = await getDocs(collection(db, 'contracts'));
+      const map: Record<string, any> = {};
+      const byEmail: Record<string, any> = {};
+      snap.docs.forEach(d => { const data = { id: d.id, ...(d.data() as any) }; map[d.id] = data; const email = String((data.clientEmail || data.client_email || '').toLowerCase()).trim(); if (email) byEmail[email] = data; });
+      setContractsMap(map);
+      setContractsByEmail(byEmail);
+      alert('Vinculadas ' + count + ' órdenes');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
