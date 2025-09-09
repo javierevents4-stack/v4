@@ -77,7 +77,7 @@ const FloatingWhatsApp = () => {
       {/* Collapsed icon/button */}
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-        className="w-12 h-12 rounded-full bg-white border border-gray-200 text-gray-700 flex items-center justify-center shadow-lg mr-2"
+        className="w-12 h-12 rounded-full bg-white border border-gray-200 text-gray-700 flex items-center justify-center shadow-lg"
         aria-label="Abrir chat"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-gray-700">
