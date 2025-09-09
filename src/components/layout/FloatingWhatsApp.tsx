@@ -66,7 +66,7 @@ const FloatingWhatsApp = () => {
       {/* Panel */}
       <div ref={ref} className={`fixed bottom-6 z-50 transition-all duration-300`} style={{ right: panelRight }}>
         <div className={`transform transition-all duration-300 ${open ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0 pointer-events-none'} mb-3`}>
-          <div className="w-96 max-w-[95vw] bg-gray-50 text-gray-800 rounded-xl shadow-lg p-4 border border-gray-200">
+          <div className="bg-gray-50 text-gray-800 rounded-xl shadow-lg p-4 border border-gray-200" style={{ width: isDesktop ? undefined : 'calc(100% - 32px)' }}>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-1">
                 {/* message icon */}
