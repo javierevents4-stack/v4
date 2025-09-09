@@ -105,8 +105,8 @@ const Header = () => {
   }, [mobileMenuOpen]);
 
   const handleBooking = () => {
-    const message = t('nav.bookMessage');
-    window.open(`https://wa.me/5541984875565?text=${encodeURIComponent(message)}`, '_blank');
+    // Navigate to booking page (same behavior as Hero)
+    navigate('/booking');
   };
 
   const { flags } = useFeatureFlags();
