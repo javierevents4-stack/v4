@@ -212,7 +212,7 @@ const OrdersManagement = () => {
 
   const openWorkflow = async (o: OrderItem) => {
     setViewing(o);
-    const base = (o.workflow && o.workflow.length) ? o.workflow : defaultWorkflow({});
+    const base = (o.workflow && o.workflow.length) ? o.workflow : [];
     const items = getDisplayItems(o);
     const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
     const wf = ensureDeliveryTasks(base, names);
