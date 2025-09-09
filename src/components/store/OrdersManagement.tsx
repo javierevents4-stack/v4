@@ -240,7 +240,7 @@ const OrdersManagement = () => {
         const cSnap = await getDoc(cRef);
         if (cSnap.exists()) {
           const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
-          const base = (contract.workflow && contract.workflow.length) ? contract.workflow : defaultWorkflow(contract);
+          const base = (contract.workflow && contract.workflow.length) ? contract.workflow : [];
           const items = getDisplayItems(viewing);
           const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
           const merged = ensureDeliveryTasks(base, names);
