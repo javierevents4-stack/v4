@@ -199,8 +199,16 @@ const OrdersManagement = () => {
     try {
       await updateDoc(doc(db, 'orders', viewing.id), { workflow } as any);
 
-      if (viewing.contractId) {
-        const cRef = doc(db, 'contracts', viewing.contractId);
+      // Try to sync to contract: prefer explicit contractId, otherwise match by customer_email
+      let targetContractId = viewing.contractId || null;
+      let targetRef: any = null;
+      if (!targetContractId && viewing.customer_email) {
+        const key = String(viewing.customer_email).toLowerCase().trim();
+        const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+        if (matched) targetContractId = matched.id;
+      }
+      if (targetContractId) {
+        const cRef = doc(db, 'contracts', targetContractId);
         const cSnap = await getDoc(cRef);
         if (cSnap.exists()) {
           const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
