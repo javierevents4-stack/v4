@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../utils/firebaseClient';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
-import { Trash2, Clock, Loader, CheckCircle, List, User, Calendar, DollarSign, Settings, ChevronDown, ChevronUp, Mail, MapPin, CreditCard, FileText, Pencil, Plus, Trash } from 'lucide-react';
+import { Trash2, Clock, Loader, CheckCircle, List, ChevronDown, ChevronUp, Mail, CreditCard, FileText, Pencil, Plus, Trash } from 'lucide-react';
 import { defaultWorkflow, categoryColors, WorkflowTemplate } from './_contractsWorkflowHelper';
 
 export type OrderStatus = 'pendiente' | 'procesando' | 'completado';
@@ -58,6 +58,8 @@ const OrdersManagement = () => {
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [defaults, setDefaults] = useState<{ products?: string; packages?: string }>({});
 
+  const [contractsMap, setContractsMap] = useState<Record<string, any>>({});
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -98,6 +100,20 @@ const OrdersManagement = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  useEffect(() => {
+    const loadContracts = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'contracts'));
+        const map: Record<string, any> = {};
+        snap.docs.forEach(d => { map[d.id] = { id: d.id, ...(d.data() as any) }; });
+        setContractsMap(map);
+      } catch (e) {
+        setContractsMap({});
+      }
+    };
+    loadContracts();
+  }, []);
+
   const filtered = useMemo(() => {
     return orders.filter(o => {
       const byStatus = statusFilter === 'todas' ? true : (o.status === statusFilter);
@@ -125,9 +141,40 @@ const OrdersManagement = () => {
     await fetchOrders();
   };
 
+  const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+  const getDisplayItems = (o: OrderItem) => {
+    if (!o) return o.items || [];
+    const c = o.contractId ? contractsMap[o.contractId] : null;
+    if (c && Array.isArray(c.storeItems) && c.storeItems.length) {
+      const names = new Set((c.storeItems || []).map((it: any) => normalize(String(it.name || ''))));
+      return (o.items || []).filter(it => names.has(normalize(String(it.name || it.product_id || it.productId || ''))));
+    }
+    return o.items || [];
+  };
+
+  const ensureDeliveryTasks = (base: WorkflowCategory[], productNames: string[]) => {
+    const cloned = JSON.parse(JSON.stringify(base)) as WorkflowCategory[];
+    const findIdx = cloned.findIndex(c => normalize(c.name).includes('entrega'));
+    const idx = findIdx >= 0 ? findIdx : cloned.length;
+    if (findIdx < 0) cloned.push({ id: uid(), name: 'Entrega de productos', tasks: [] });
+    const cat = cloned[idx];
+    productNames.forEach(n => {
+      const title = `Entregar ${n}`;
+      if (!cat.tasks.some(t => normalize(t.title) === normalize(title))) {
+        cat.tasks.push({ id: uid(), title, done: false });
+      }
+    });
+    cloned[idx] = cat;
+    return cloned;
+  };
+
   const openWorkflow = async (o: OrderItem) => {
     setViewing(o);
-    const wf = (o.workflow && o.workflow.length) ? o.workflow : defaultWorkflow({});
+    const base = (o.workflow && o.workflow.length) ? o.workflow : defaultWorkflow({});
+    const items = getDisplayItems(o);
+    const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+    const wf = ensureDeliveryTasks(base, names);
     setWorkflow(JSON.parse(JSON.stringify(wf)));
     if (templates.length === 0) await fetchTemplates();
     setWfEditMode(false);
@@ -138,6 +185,31 @@ const OrdersManagement = () => {
     setSavingWf(true);
     try {
       await updateDoc(doc(db, 'orders', viewing.id), { workflow } as any);
+
+      if (viewing.contractId) {
+        const cRef = doc(db, 'contracts', viewing.contractId);
+        const cSnap = await getDoc(cRef);
+        if (cSnap.exists()) {
+          const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
+          const base = (contract.workflow && contract.workflow.length) ? contract.workflow : defaultWorkflow(contract);
+          const items = getDisplayItems(viewing);
+          const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+          const merged = ensureDeliveryTasks(base, names);
+          const ordDeliveryCat = (workflow as WorkflowCategory[]).find(c => normalize(c.name).includes('entrega'));
+          if (ordDeliveryCat) {
+            merged.forEach(cat => {
+              if (normalize(cat.name).includes('entrega')) {
+                cat.tasks = cat.tasks.map(t => {
+                  const match = ordDeliveryCat.tasks.find(ot => normalize(ot.title) === normalize(t.title));
+                  return match ? { ...t, done: !!match.done } : t;
+                });
+              }
+            });
+          }
+          await updateDoc(cRef, { workflow: merged } as any);
+        }
+      }
+
       await fetchOrders();
     } finally {
       setSavingWf(false);
@@ -264,7 +336,7 @@ const OrdersManagement = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {(o.items || []).map((it, idx) => {
+                              {getDisplayItems(o).map((it, idx) => {
                                 const qty = Number(it.qty ?? it.quantity ?? 1);
                                 const price = Number(it.price ?? 0);
                                 const total = it.total != null ? Number(it.total) : price * qty;
@@ -277,7 +349,7 @@ const OrdersManagement = () => {
                                   </tr>
                                 );
                               })}
-                              {(!o.items || o.items.length === 0) && (
+                              {getDisplayItems(o).length === 0 && (
                                 <tr className="border-t"><td className="py-2 text-gray-500" colSpan={4}>Sin productos</td></tr>
                               )}
                             </tbody>
@@ -416,7 +488,7 @@ const OrdersManagement = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(viewing.items || []).map((it, idx) => {
+                        {getDisplayItems(viewing).map((it, idx) => {
                           const qty = Number(it.qty ?? it.quantity ?? 1);
                           const price = Number(it.price ?? 0);
                           const total = it.total != null ? Number(it.total) : price * qty;
@@ -429,7 +501,7 @@ const OrdersManagement = () => {
                             </tr>
                           );
                         })}
-                        {(!viewing.items || viewing.items.length === 0) && (
+                        {getDisplayItems(viewing).length === 0 && (
                           <tr className="border-t"><td className="py-2 text-gray-500" colSpan={4}>Sin productos</td></tr>
                         )}
                       </tbody>
