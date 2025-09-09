@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../utils/firebaseClient';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
-import { Trash2, Clock, Loader, CheckCircle, List, ChevronDown, ChevronUp, Mail, CreditCard, FileText, Pencil, Plus, Trash } from 'lucide-react';
+import { Clock, Loader, CheckCircle, List, Mail, CreditCard, FileText, Plus, Trash } from 'lucide-react';
 import { defaultWorkflow, categoryColors, WorkflowTemplate } from './_contractsWorkflowHelper';
 
 export type OrderStatus = 'pendiente' | 'procesando' | 'completado';
@@ -48,7 +48,6 @@ const OrdersManagement = () => {
   const [statusFilter, setStatusFilter] = useState<'todas' | OrderStatus>('todas');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const [viewing, setViewing] = useState<OrderItem | null>(null);
   const [workflow, setWorkflow] = useState<WorkflowCategory[] | null>(null);
@@ -369,13 +368,8 @@ const OrdersManagement = () => {
             });
             const cols = colorsFor(wf.length);
             return (
-              <div key={o.id} className="grid grid-cols-12 p-3 items-center">
-                <div className="col-span-1">
-                  <button onClick={() => setExpanded(e => ({ ...e, [o.id]: !e[o.id] }))} className="border-2 border-black text-black px-2 py-1 rounded-full hover:bg-black hover:text-white inline-flex items-center" title={expanded[o.id] ? 'Ocultar' : 'Ver detalles'}>
-                    {expanded[o.id] ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                  </button>
-                </div>
-                <div className="col-span-3 lowercase first-letter:uppercase">{o.customer_name || 'cliente'}</div>
+              <div key={o.id} className="grid grid-cols-12 p-3 items-center hover:bg-gray-50 cursor-pointer" onClick={() => openWorkflow(o)}>
+                    <div className="col-span-3 lowercase first-letter:uppercase">{o.customer_name || 'cliente'}</div>
                 <div className="col-span-2 text-sm text-gray-600">{o.created_at ? new Date(o.created_at).toLocaleDateString() : ''}</div>
                 <div className="col-span-1 font-semibold">${Number(o.total || 0).toFixed(0)}</div>
                 <div className="col-span-3">
@@ -387,74 +381,9 @@ const OrdersManagement = () => {
                     ))}
                   </div>
                 </div>
-                <div className="col-span-2 text-right flex items-center justify-end gap-2">
-                  <div className="flex gap-1">
-                    {(['pendiente','procesando','completado'] as const).map(s => {
-                      const colorBase = s==='pendiente' ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-white' : s==='procesando' ? 'border-yellow-500 text-yellow-700 hover:bg-yellow-500 hover:text-black' : 'border-green-600 text-green-600 hover:bg-green-600 hover:text-white';
-                      const active = o.status===s ? (s==='pendiente' ? 'bg-red-600 text-white border-red-600' : s==='procesando' ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-green-600 text-white border-green-600') : '';
-                      const Icon = s==='pendiente' ? Clock : s==='procesando' ? Loader : CheckCircle;
-                      return (
-                        <button key={s} onClick={() => updateStatus(o.id, s)} title={s} className={`px-2 py-1 text-xs border-2 rounded-full inline-flex items-center justify-center ${active || colorBase}`}>
-                          <Icon size={14} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button onClick={() => openWorkflow(o)} title="Workflow" className="border-2 border-black text-black px-2 py-1 rounded-full hover:bg-black hover:text-white inline-flex items-center"><Pencil size={14}/></button>
-                  <button onClick={() => remove(o.id)} title="Eliminar" className="border-2 border-black text-black px-2 py-1 rounded-full hover:bg-black hover:text-white inline-flex items-center"><Trash2 size={14}/></button>
+                <div className="col-span-2 text-right">
+                  {/* Row opens modal on click; actions removed */}
                 </div>
-                {expanded[o.id] && (
-                  <div className="col-span-12 mt-3">
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div className="flex items-center gap-2"><Mail size={14} className="text-gray-600"/><span>{o.customer_email || '-'}</span></div>
-                        <div className="flex items-center gap-2"><CreditCard size={14} className="text-gray-600"/><span>{o.payment_method || '-'}</span></div>
-                        <div className="flex items-center gap-2"><FileText size={14} className="text-gray-600"/><span>#{o.id}</span></div>
-                      </div>
-
-                      <div className="mt-3">
-                        <div className="text-xs font-medium mb-2 flex items-center gap-2"><FileText size={14}/> Productos</div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="text-left text-gray-600">
-                                <th className="py-1">Producto</th>
-                                <th className="py-1">Cant.</th>
-                                <th className="py-1">Precio</th>
-                                <th className="py-1">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {getDisplayItems(o).map((it, idx) => {
-                                const qty = Number(it.qty ?? it.quantity ?? 1);
-                                const price = Number(it.price ?? 0);
-                                const total = it.total != null ? Number(it.total) : price * qty;
-                                return (
-                                  <tr key={idx} className="border-t">
-                                    <td className="py-1">{it.name || it.product_id || it.productId || '—'}</td>
-                                    <td className="py-1">{qty}</td>
-                                    <td className="py-1">${price.toFixed(0)}</td>
-                                    <td className="py-1">${total.toFixed(0)}</td>
-                                  </tr>
-                                );
-                              })}
-                              {getDisplayItems(o).length === 0 && (
-                                <tr className="border-t"><td className="py-2 text-gray-500" colSpan={4}>Sin productos</td></tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {o.notes && (
-                        <div className="mt-3 text-sm text-gray-700">
-                          <div className="text-xs font-medium mb-1">Notas</div>
-                          <div className="whitespace-pre-line">{o.notes}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
