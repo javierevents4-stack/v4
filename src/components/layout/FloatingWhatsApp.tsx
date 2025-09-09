@@ -7,11 +7,21 @@ const FloatingWhatsApp = () => {
   const [message, setMessage] = useState('');
   const ref = useRef<HTMLDivElement | null>(null);
 
+  const [isDesktop, setIsDesktop] = useState<boolean>(typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : false);
+
   useEffect(() => {
+    const onResize = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
+    window.addEventListener('resize', onResize);
+
     // Auto-open only once per user (per browser)
     const shown = localStorage.getItem('floatingWhatsAppShown');
     if (!shown) {
-      setOpen(true);
+      // On desktop show expanded panel on first load, on mobile keep only widget
+      if (window.matchMedia('(min-width: 768px)').matches) {
+        setOpen(true);
+      } else {
+        setOpen(false);
+      }
       localStorage.setItem('floatingWhatsAppShown', '1');
     }
 
@@ -31,6 +41,7 @@ const FloatingWhatsApp = () => {
     return () => {
       document.removeEventListener('click', handleClick);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
 
