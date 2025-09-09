@@ -83,6 +83,34 @@ const OrdersManagement = () => {
           items = [];
         }
       }
+
+      // If there are no explicit orders, fall back to building 'virtual' orders from contracts
+      if ((!items || items.length === 0)) {
+        try {
+          const csnap = await getDocs(query(collection(db, 'contracts'), orderBy('createdAt', 'desc')));
+          const contractsList = csnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+          const virtual: OrderItem[] = contractsList.map((c: any) => {
+            const storeItems = Array.isArray(c.storeItems) ? c.storeItems : [];
+            const itemsForOrder = storeItems.map((si: any) => ({ name: si.name, quantity: Number(si.quantity || 1), price: Number(si.price || 0), total: Number(si.price || 0) * Number(si.quantity || 1) }));
+            const total = itemsForOrder.reduce((s, it) => s + Number(it.total || 0), 0) + Number(c.travelFee || 0);
+            return {
+              id: `contract-${c.id}`,
+              customer_name: c.clientName || c.client_name || '',
+              customer_email: c.clientEmail || c.client_email || '',
+              items: itemsForOrder,
+              total,
+              created_at: c.contractDate || c.createdAt || new Date().toISOString(),
+              status: 'pendiente',
+              workflow: c.workflow || undefined,
+              contractId: c.id,
+            } as OrderItem;
+          });
+          items = virtual;
+        } catch (e) {
+          console.warn('No se pudieron generar órdenes desde contratos', e);
+        }
+      }
+
       setOrders(items);
     } catch (e) {
       console.warn('Error inesperado al cargar órdenes', e);
