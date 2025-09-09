@@ -118,7 +118,9 @@ const Header = () => {
       const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
       const rect = el.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const target = rect.top + scrollTop - headerHeight - 16; // small spacing
+      // Scroll a bit further down so the services section appears lower in the viewport
+      const extraOffset = 200;
+      const target = rect.top + scrollTop - headerHeight + extraOffset;
       window.scrollTo({ top: target, behavior: 'smooth' });
     };
 
