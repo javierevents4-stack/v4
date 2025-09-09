@@ -26,7 +26,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative h-[95vh]">
+    <section className="relative h-screen">
       <div className="absolute inset-0 overflow-hidden">
         {heroImages.map((image, index) => (
           <div 
