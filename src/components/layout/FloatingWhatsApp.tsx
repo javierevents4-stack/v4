@@ -35,7 +35,7 @@ const FloatingWhatsApp = () => {
   }, []);
 
   const sendWhatsApp = () => {
-    const text = message && message.trim() ? message.trim() : 'Hola, quiero reservar una sesión';
+    const text = message && message.trim() ? message.trim() : 'Olá, quero agendar uma sessão';
     const url = `https://wa.me/${PHONE}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     setMessage('');
@@ -43,32 +43,32 @@ const FloatingWhatsApp = () => {
   };
 
   return (
-    <div ref={ref} className="fixed right-4 bottom-6 z-50">
+    <div ref={ref} className={`fixed bottom-6 z-50 transition-all duration-300 ${open ? 'right-4' : 'right-0'}`}>
       {/* Expanded panel */}
       <div className={`transform transition-all duration-300 ${open ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0 pointer-events-none'} mb-3`}>
-        <div className="w-80 max-w-[90vw] bg-gray-50 text-gray-800 rounded-xl shadow-lg p-3 border border-gray-200">
+        <div className="w-96 max-w-[95vw] bg-gray-50 text-gray-800 rounded-xl shadow-lg p-4 border border-gray-200">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 mt-1">
               {/* message icon */}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 text-gray-600">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
             <div className="flex-1">
-              <div className="font-medium text-gray-800">¿Deseas contactarnos?</div>
-              <div className="text-sm text-gray-600">Si deseas, envíanos un mensaje por WhatsApp y te ayudamos a reservar.</div>
+              <div className="font-medium text-gray-800">Deseja entrar em contato?</div>
+              <div className="text-sm text-gray-600">Envie-nos uma mensagem pelo WhatsApp e ajudaremos a agendar sua sessão.</div>
 
               <div className="mt-3 flex gap-2">
                 <input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Escribe tu mensaje..."
-                  className="flex-1 p-2 rounded-md bg-white border border-gray-200 text-gray-800 focus:outline-none"
+                  placeholder="Escreva sua mensagem..."
+                  className="flex-1 p-3 rounded-md bg-white border border-gray-200 text-gray-800 focus:outline-none"
                 />
-                <button onClick={sendWhatsApp} className="bg-gray-700 text-white px-3 rounded-md">Enviar</button>
+                <button onClick={sendWhatsApp} className="bg-gray-700 text-white px-4 rounded-md">Enviar</button>
               </div>
 
-              <div className="mt-2 text-xs text-gray-500">Al enviar, se abrirá WhatsApp con tu mensaje.</div>
+              <div className="mt-2 text-xs text-gray-500">Ao enviar, o WhatsApp será aberto com sua mensagem.</div>
             </div>
           </div>
         </div>
@@ -77,7 +77,7 @@ const FloatingWhatsApp = () => {
       {/* Collapsed icon/button */}
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-        className="w-12 h-12 rounded-full bg-white border border-gray-200 text-gray-700 flex items-center justify-center shadow-lg"
+        className="w-12 h-12 rounded-full bg-white border border-gray-200 text-gray-700 flex items-center justify-center shadow-lg mr-2"
         aria-label="Abrir chat"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-gray-700">
