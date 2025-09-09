@@ -3,6 +3,7 @@ import Header from './Header';
 import Footer from './Footer';
 import { Camera } from 'lucide-react';
 import ImageAdminOverlay from '../admin/ImageAdminOverlay';
+import FloatingWhatsApp from './FloatingWhatsApp';
 
 interface LayoutProps {
   children: ReactNode;
