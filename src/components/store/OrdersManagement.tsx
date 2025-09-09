@@ -360,7 +360,7 @@ const OrdersManagement = () => {
         {!loading && filtered.length === 0 && <div className="p-4 text-sm text-gray-500">Sin resultados</div>}
         <div className="divide-y">
           {filtered.map(o => {
-            const wf = (o.workflow && o.workflow.length) ? o.workflow : defaultWorkflow({});
+            const wf = (o.workflow && o.workflow.length) ? o.workflow : [];
             const segments = wf.map(cat => {
               const total = cat.tasks.length || 1;
               const done = cat.tasks.filter(t => t.done).length;
