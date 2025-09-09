@@ -118,8 +118,8 @@ const Header = () => {
       const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
       const rect = el.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const extraUp = 80; // lift the section a bit higher in the viewport
-      const target = rect.top + scrollTop - headerHeight - extraUp;
+      const extraDown = 80; // push the section a bit lower in the viewport
+      const target = rect.top + scrollTop - headerHeight + extraDown;
       window.scrollTo({ top: target, behavior: 'smooth' });
     };
 
