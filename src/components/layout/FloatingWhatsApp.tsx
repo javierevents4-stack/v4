@@ -53,9 +53,13 @@ const FloatingWhatsApp = () => {
     setOpen(false);
   };
 
-  const panelWidth = 384; // approx w-96
-  const panelRight = open ? 16 : (isDesktop ? -panelWidth : 16);
-  const buttonRight = open ? 16 : (isDesktop ? 0 : 16);
+  const panelWidth = 360; // approx w-96
+  const panelRightOpen = 48; // more space from right edge when open
+  const gap = 24; // gap between panel and widget when open
+
+  const panelRight = open ? panelRightOpen : (isDesktop ? -panelWidth - 16 : 16);
+  // When open on desktop, place widget to the left of the panel (further left = larger right value)
+  const buttonRight = open && isDesktop ? panelRightOpen + panelWidth + gap : (isDesktop ? 8 : 16);
 
   return (
     <>
