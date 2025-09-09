@@ -430,8 +430,73 @@ const OrdersManagement = () => {
                           {cat.tasks.map((t, ti) => (
                             <div key={t.id} className="flex items-start gap-2">
                               {!wfEditMode && (
-                                <input type="checkbox" checked={t.done} onChange={(e)=>{
-                                  setWorkflow(wf=>{ const next = wf ? [...wf] : []; next[ci] = { ...next[ci], tasks: next[ci].tasks.map((x, idx)=> idx===ti? { ...x, done: e.target.checked }: x)}; return next; });
+                                <input type="checkbox" checked={t.done} onChange={async (e)=>{
+                                  const checked = e.target.checked;
+                                  if (!workflow || !viewing) return;
+                                  const updated = workflow.map((c, ci2) => ci2===ci ? { ...c, tasks: c.tasks.map((x, ti2)=> ti2===ti ? { ...x, done: checked } : x) } : c);
+                                  setWorkflow(updated);
+                                  try {
+                                    const isVirtual = String(viewing.id || '').startsWith('contract-');
+                                    if (isVirtual) {
+                                      const contractId = viewing.contractId || String(viewing.id || '').replace(/^contract-/, '');
+                                      if (contractId) {
+                                        const cRef = doc(db, 'contracts', contractId);
+                                        const cSnap = await getDoc(cRef);
+                                        if (cSnap.exists()) {
+                                          const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
+                                          const base = (contract.workflow && contract.workflow.length) ? contract.workflow : [];
+                                          const items = getDisplayItems(viewing as OrderItem);
+                                          const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+                                          const merged = ensureDeliveryTasks(base, names);
+                                          const ordDeliveryCat = updated.find(cu => normalize(cu.name).includes('entrega'));
+                                          if (ordDeliveryCat) {
+                                            merged.forEach(cat => {
+                                              if (normalize(cat.name).includes('entrega')) {
+                                                cat.tasks = cat.tasks.map(t => {
+                                                  const match = ordDeliveryCat.tasks.find(ot => normalize(ot.title) === normalize(t.title));
+                                                  return match ? { ...t, done: !!match.done } : t;
+                                                });
+                                              }
+                                            });
+                                          }
+                                          await updateDoc(cRef, { workflow: merged } as any);
+                                        }
+                                      }
+                                    } else {
+                                      await updateDoc(doc(db, 'orders', viewing.id), { workflow: updated } as any);
+                                      let targetContractId = viewing.contractId || null;
+                                      if (!targetContractId && viewing.customer_email) {
+                                        const key = String(viewing.customer_email).toLowerCase().trim();
+                                        const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+                                        if (matched) targetContractId = matched.id;
+                                      }
+                                      if (targetContractId) {
+                                        const cRef = doc(db, 'contracts', targetContractId);
+                                        const cSnap = await getDoc(cRef);
+                                        if (cSnap.exists()) {
+                                          const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
+                                          const base = (contract.workflow && contract.workflow.length) ? contract.workflow : [];
+                                          const items = getDisplayItems(viewing as OrderItem);
+                                          const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+                                          const merged = ensureDeliveryTasks(base, names);
+                                          const ordDeliveryCat = updated.find(cu => normalize(cu.name).includes('entrega'));
+                                          if (ordDeliveryCat) {
+                                            merged.forEach(cat => {
+                                              if (normalize(cat.name).includes('entrega')) {
+                                                cat.tasks = cat.tasks.map(t => {
+                                                  const match = ordDeliveryCat.tasks.find(ot => normalize(ot.title) === normalize(t.title));
+                                                  return match ? { ...t, done: !!match.done } : t;
+                                                });
+                                              }
+                                            });
+                                          }
+                                          await updateDoc(cRef, { workflow: merged } as any);
+                                        }
+                                      }
+                                    }
+                                  } catch (err) {
+                                    console.warn('Error persisting workflow change', err);
+                                  }
                                 }} />
                               )}
                               <div className="flex-1">
