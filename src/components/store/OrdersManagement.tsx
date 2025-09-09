@@ -59,6 +59,7 @@ const OrdersManagement = () => {
   const [defaults, setDefaults] = useState<{ products?: string; packages?: string }>({});
 
   const [contractsMap, setContractsMap] = useState<Record<string, any>>({});
+  const [contractsByEmail, setContractsByEmail] = useState<Record<string, any>>({});
 
   const fetchOrders = async () => {
     setLoading(true);
