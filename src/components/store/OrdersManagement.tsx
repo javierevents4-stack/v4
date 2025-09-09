@@ -106,10 +106,18 @@ const OrdersManagement = () => {
       try {
         const snap = await getDocs(collection(db, 'contracts'));
         const map: Record<string, any> = {};
-        snap.docs.forEach(d => { map[d.id] = { id: d.id, ...(d.data() as any) }; });
+        const byEmail: Record<string, any> = {};
+        snap.docs.forEach(d => {
+          const data = { id: d.id, ...(d.data() as any) };
+          map[d.id] = data;
+          const email = String((data.clientEmail || data.client_email || '').toLowerCase()).trim();
+          if (email) byEmail[email] = data;
+        });
         setContractsMap(map);
+        setContractsByEmail(byEmail);
       } catch (e) {
         setContractsMap({});
+        setContractsByEmail({});
       }
     };
     loadContracts();
