@@ -539,7 +539,6 @@ const OrdersManagement = () => {
                       setWorkflow(w=>{ const n = w? [...w]:[]; n.push({ id: uid(), name: 'Nueva categoría', tasks: [] }); return n;});
                     }} className="border-2 border-black text-black px-3 py-2 rounded-none hover:bg-black hover:text-white inline-flex items-center gap-2"><Plus size={14}/> Añadir categoría</button>
                   )}
-                  <button onClick={saveWorkflow} disabled={savingWf} className="border-2 border-black bg-black text-white px-3 py-2 rounded-none hover:opacity-90 disabled:opacity-50">Guardar</button>
                   <div className="ml-auto flex items-center gap-2">
                     <select onChange={(e)=>{ const id = e.target.value; const tpl = templates.find(t=>t.id===id) || null; applyTemplateToOrder(tpl); }} className="border px-2 py-2 rounded-none text-sm">
                       <option value="">Elegir plantilla…</option>
