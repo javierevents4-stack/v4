@@ -292,16 +292,25 @@ const Header = () => {
             <h3 className="text-xl font-semibold mb-2">Acesso ao painel da loja</h3>
             <p className="text-sm text-gray-600 mb-4">Insira a senha de administrador para acessar o painel.</p>
             <input
-              type="password"
+              type="email"
               autoFocus
-              value={adminModalKey}
-              onChange={(e) => setAdminModalKey(e.target.value)}
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
               className="w-full border border-gray-200 rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-secondary"
-              placeholder="Senha de acesso"
+              placeholder="Email"
+              autoComplete="off"
+            />
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full border border-gray-200 rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-secondary"
+              placeholder="Senha"
+              autoComplete="new-password"
             />
             {adminModalError && <div className="text-red-500 text-sm mb-3">{adminModalError}</div>}
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowAdminModal(false); setAdminModalKey(''); setAdminModalError(''); }} className="px-4 py-2 border rounded">Cancelar</button>
+              <button onClick={() => { setShowAdminModal(false); setAdminEmail(''); setAdminPassword(''); setAdminModalError(''); }} className="px-4 py-2 border rounded">Cancelar</button>
               <button onClick={submitAdminModal} className="px-4 py-2 bg-primary text-white rounded">Acessar</button>
             </div>
           </div>
