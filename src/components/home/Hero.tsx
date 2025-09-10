@@ -26,7 +26,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative h-[85vh]">
+    <section className="relative h-screen">
       <div className="absolute inset-0 overflow-hidden">
         {heroImages.map((image, index) => (
           <div 
@@ -48,7 +48,7 @@ const Hero = () => {
       <div className="relative z-20 h-full flex items-start md:items-center">
         <div className="container-custom">
           <div className="max-w-3xl mx-auto text-center text-white hero-reveal">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-playfair font-semibold mb-4">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-playfair font-semibold mb-4">
               {t('home.hero.title')}
             </h1>
             <p className="text-lg md:text-xl opacity-90 mb-8">

@@ -105,8 +105,8 @@ const Header = () => {
   }, [mobileMenuOpen]);
 
   const handleBooking = () => {
-    const message = t('nav.bookMessage');
-    window.open(`https://wa.me/5541984875565?text=${encodeURIComponent(message)}`, '_blank');
+    // Navigate to booking page (same behavior as Hero)
+    navigate('/booking');
   };
 
   const { flags } = useFeatureFlags();
@@ -118,7 +118,8 @@ const Header = () => {
       const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
       const rect = el.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const target = rect.top + scrollTop - headerHeight - 16; // small spacing
+      const extraDown = 80; // push the section a bit lower in the viewport
+      const target = rect.top + scrollTop - headerHeight + extraDown;
       window.scrollTo({ top: target, behavior: 'smooth' });
     };
 
@@ -227,9 +228,9 @@ const Header = () => {
           </div>
         </div>
 
-        <div className={`fixed inset-0 bg-white z-40 transform transition-transform duration-300 ease-in-out ${
+        <div className={`fixed top-0 bottom-0 right-4 bg-white z-40 md:hidden transform transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
+        }`} style={{ width: 'calc(100% - 64px)', borderRadius: 12 }}>
           <div className="flex flex-col h-full pt-24 px-6">
             <ul className="flex flex-col space-y-6 text-center">
               {navLinks.map((link) => (

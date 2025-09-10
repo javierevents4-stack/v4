@@ -161,8 +161,23 @@ const ContractsManagement = () => {
   const openView = async (c: ContractItem) => {
     setWfEditMode(false);
     setViewing(c);
-    const ensure = (c.workflow && c.workflow.length) ? c.workflow : defaultWorkflow(c);
-    setWorkflow(JSON.parse(JSON.stringify(ensure)));
+    const base = (c.workflow && c.workflow.length) ? c.workflow : [];
+
+    const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+    const merged = JSON.parse(JSON.stringify(base)) as WorkflowCategory[];
+    const findIdx = merged.findIndex(cat => normalize(cat.name).includes('entrega'));
+    const idx = findIdx >= 0 ? findIdx : merged.length;
+    if (findIdx < 0) merged.push({ id: uid(), name: 'Entrega de productos', tasks: [] });
+    const cat = merged[idx];
+    (Array.isArray(c.storeItems) ? c.storeItems : []).forEach((it: any) => {
+      const title = `Entregar ${String(it.name || '')}`;
+      if (!cat.tasks.some(t => normalize(t.title) === normalize(title))) {
+        cat.tasks.push({ id: uid(), title, done: false });
+      }
+    });
+    merged[idx] = cat;
+
+    setWorkflow(JSON.parse(JSON.stringify(merged)));
     if (templates.length === 0) await fetchTemplates();
   };
 
