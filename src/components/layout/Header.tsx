@@ -60,12 +60,30 @@ const Header = () => {
   const submitAdminModal = async () => {
     if (!adminModalKey) { setAdminModalError('Insira a senha'); return; }
     if (adminModalKey === '1234') {
+      // quick offline check
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setAdminModalError('Sem conexão de rede. Verifique sua internet e tente novamente.');
+        return;
+      }
+
       try {
         // Sign in anonymously so storage rules that require auth will allow uploads
         await signInAnonymously(auth);
-      } catch (e) {
+      } catch (e: any) {
         console.error('Anonymous sign-in failed', e);
+        const code = e?.code || '';
+        const msg = e?.message || String(e) || 'Erro ao autenticar';
+        // Provide a friendly message and do not enable admin mode if auth failed
+        if (code === 'auth/network-request-failed' || msg.toLowerCase().includes('network')) {
+          setAdminModalError('Falha de rede ao tentar autenticar. Tente novamente mais tarde.');
+        } else if (code === 'auth/operation-not-allowed') {
+          setAdminModalError('Autenticação anônima não está habilitada no console do Firebase. Habilite em Auth > Sign-in method.');
+        } else {
+          setAdminModalError(`Falha ao autenticar: ${msg}`);
+        }
+        return;
       }
+
       notifyAdminChange(true);
       setShowAdminModal(false);
       setAdminModalKey('');
