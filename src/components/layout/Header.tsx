@@ -13,7 +13,8 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(Boolean(typeof window !== 'undefined' && localStorage.getItem('site_admin_mode')));
   const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminModalKey, setAdminModalKey] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [adminModalError, setAdminModalError] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
