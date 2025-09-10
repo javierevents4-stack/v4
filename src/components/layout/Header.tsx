@@ -114,7 +114,9 @@ const Header = () => {
       const code = lastError?.code || '';
       const msg = lastError?.message || String(lastError) || 'Erro ao autenticar';
       if (code === 'auth/network-request-failed' || msg.toLowerCase().includes('network')) {
-        setAdminModalError('Falha de rede ao tentar autenticar. Verifique sua conexão, extensões de bloqueio (adblock/privacy) ou domínios autorizados no Firebase.');
+        const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+        setAuthDomain(origin || null);
+        setAdminModalError('Falha de rede ao tentar autenticar. Verifique sua conexão, extensões de bloqueio (adblock/privacy) ou domínios autorizados no Firebase.\n\nDomínio autorizado sugerido: ' + (origin || ''));
       } else if (code === 'auth/user-not-found' || code === 'auth/wrong-password') {
         setAdminModalError('Email ou senha incorretos.');
       } else if (code === 'auth/invalid-email') {
