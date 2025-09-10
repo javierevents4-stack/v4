@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Eye, EyeOff } from 'lucide-react';
-import { signInAnonymously, signOut as firebaseSignOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../../utils/firebaseClient';
 import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
