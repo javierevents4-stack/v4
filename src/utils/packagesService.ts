@@ -10,7 +10,6 @@ import {
   where,
   orderBy
 } from 'firebase/firestore';
-import { db } from './firebaseClient';
 
 export type PackageType = 'portrait' | 'maternity' | 'events';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Eye, EyeOff } from 'lucide-react';
-import { signInAnonymously, signOut as firebaseSignOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut as firebaseSignOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../../utils/firebaseClient';
 import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
@@ -13,8 +13,13 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(Boolean(typeof window !== 'undefined' && localStorage.getItem('site_admin_mode')));
   const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminModalKey, setAdminModalKey] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [adminModalError, setAdminModalError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [authDomain, setAuthDomain] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -49,7 +54,8 @@ const Header = () => {
 
   const toggleAdminFromHeader = () => {
     if (!isAdmin) {
-      setAdminModalKey('');
+      setAdminEmail('');
+      setAdminPassword('');
       setAdminModalError('');
       setShowAdminModal(true);
     } else {
@@ -58,22 +64,80 @@ const Header = () => {
   };
 
   const submitAdminModal = async () => {
-    if (!adminModalKey) { setAdminModalError('Insira a senha'); return; }
-    if (adminModalKey === '1234') {
-      try {
-        // Sign in anonymously so storage rules that require auth will allow uploads
-        await signInAnonymously(auth);
-      } catch (e) {
-        console.error('Anonymous sign-in failed', e);
-      }
-      notifyAdminChange(true);
-      setShowAdminModal(false);
-      setAdminModalKey('');
-      setAdminModalError('');
-      navigate('/admin-store');
-    } else {
-      setAdminModalError('Senha incorreta');
+    if (!adminEmail || !adminPassword) { setAdminModalError('Insira email e senha'); return; }
+
+    // password min length
+    if (adminPassword.length < 8) {
+      setAdminModalError('A senha deve ter pelo menos 8 caracteres.');
+      return;
     }
+
+    // quick offline check
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setAdminModalError('Sem conexão de rede. Verifique sua internet e tente novamente.');
+      return;
+    }
+
+    // set persistence based on rememberMe
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    } catch (pErr) {
+      console.warn('Failed to set persistence', pErr);
+    }
+
+    // Try signing in with retries (network can be flaky)
+    const maxAttempts = 3;
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
+        lastError = null;
+        break; // success
+      } catch (e: any) {
+        lastError = e;
+        console.warn(`Sign-in attempt ${attempt} failed`, e);
+        // if non-network error (invalid credentials etc), stop retrying
+        const code = e?.code || '';
+        if (code && !code.includes('network') && code !== 'auth/too-many-requests') break;
+        // exponential backoff
+        const delay = 300 * Math.pow(2, attempt);
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+
+    if (lastError) {
+      console.error('Email/password sign-in failed after retries', lastError);
+      const code = lastError?.code || '';
+      const msg = lastError?.message || String(lastError) || 'Erro ao autenticar';
+      if (code === 'auth/network-request-failed' || msg.toLowerCase().includes('network')) {
+        const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+        setAuthDomain(origin || null);
+        setAdminModalError('Falha de rede ao tentar autenticar. Verifique sua conexão, extensões de bloqueio (adblock/privacy) ou domínios autorizados no Firebase.\n\nDomínio autorizado sugerido: ' + (origin || ''));
+      } else if (code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+        setAdminModalError('Email ou senha incorretos.');
+      } else if (code === 'auth/invalid-email') {
+        setAdminModalError('Email inválido.');
+      } else if (code === 'auth/too-many-requests') {
+        setAdminModalError('Muitas tentativas falharam. Tente novamente mais tarde.');
+      } else {
+        setAdminModalError(`Falha ao autenticar: ${msg}`);
+      }
+      return;
+    }
+
+    // success
+    notifyAdminChange(true);
+    setShowAdminModal(false);
+    setAdminEmail('');
+    setAdminPassword('');
+    setAdminModalError('');
+    setRememberMe(false);
+    setShowPassword(false);
+    navigate('/admin-store');
   };
 
   useEffect(() => {
@@ -271,16 +335,80 @@ const Header = () => {
             <h3 className="text-xl font-semibold mb-2">Acesso ao painel da loja</h3>
             <p className="text-sm text-gray-600 mb-4">Insira a senha de administrador para acessar o painel.</p>
             <input
-              type="password"
+              type="email"
               autoFocus
-              value={adminModalKey}
-              onChange={(e) => setAdminModalKey(e.target.value)}
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
               className="w-full border border-gray-200 rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-secondary"
-              placeholder="Senha de acesso"
+              placeholder="Email"
+              autoComplete="off"
             />
-            {adminModalError && <div className="text-red-500 text-sm mb-3">{adminModalError}</div>}
+            <div className="relative mb-3">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full border border-gray-200 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-secondary"
+                placeholder="Senha"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 mb-3 text-sm">
+              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4" />
+              <span>Lembrar-me</span>
+            </label>
+
+            {adminModalError && (
+              <div className="text-red-500 text-sm mb-3">
+                <div className="whitespace-pre-wrap">{adminModalError}</div>
+
+                {authDomain && (
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <code className="bg-gray-100 px-2 py-1 rounded text-xs">{authDomain}</code>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(authDomain);
+                          } else {
+                            const el = document.createElement('textarea');
+                            el.value = authDomain;
+                            document.body.appendChild(el);
+                            el.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(el);
+                          }
+                          setCopiedDomain(true);
+                          setTimeout(() => setCopiedDomain(false), 2000);
+                        } catch (err) {
+                          console.warn('copy failed', err);
+                        }
+                      }}
+                      className="px-3 py-1 border rounded text-sm"
+                    >
+                      {copiedDomain ? 'Copiado' : 'Copiar domínio'}
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-2 flex gap-2 justify-center">
+                  <button onClick={() => { setAdminModalError(''); setAdminEmail(''); setAdminPassword(''); setAuthDomain(null); }} className="px-3 py-1 border rounded text-sm">Limpar</button>
+                  <button onClick={submitAdminModal} className="px-3 py-1 bg-primary text-white rounded text-sm">Tentar novamente</button>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowAdminModal(false); setAdminModalKey(''); setAdminModalError(''); }} className="px-4 py-2 border rounded">Cancelar</button>
+              <button onClick={() => { setShowAdminModal(false); setAdminEmail(''); setAdminPassword(''); setAdminModalError(''); setRememberMe(false); setShowPassword(false); }} className="px-4 py-2 border rounded">Cancelar</button>
               <button onClick={submitAdminModal} className="px-4 py-2 bg-primary text-white rounded">Acessar</button>
             </div>
           </div>
