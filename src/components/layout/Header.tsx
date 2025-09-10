@@ -76,22 +76,43 @@ const Header = () => {
       return;
     }
 
+    // set persistence based on rememberMe
     try {
-      // set persistence based on rememberMe
-      try {
-        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-      } catch (pErr) {
-        console.warn('Failed to set persistence', pErr);
-      }
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    } catch (pErr) {
+      console.warn('Failed to set persistence', pErr);
+    }
 
-      // Sign in with email/password
-      await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
-    } catch (e: any) {
-      console.error('Email/password sign-in failed', e);
-      const code = e?.code || '';
-      const msg = e?.message || String(e) || 'Erro ao autenticar';
+    // Try signing in with retries (network can be flaky)
+    const maxAttempts = 3;
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
+        lastError = null;
+        break; // success
+      } catch (e: any) {
+        lastError = e;
+        console.warn(`Sign-in attempt ${attempt} failed`, e);
+        // if non-network error (invalid credentials etc), stop retrying
+        const code = e?.code || '';
+        if (code && !code.includes('network') && code !== 'auth/too-many-requests') break;
+        // exponential backoff
+        const delay = 300 * Math.pow(2, attempt);
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+
+    if (lastError) {
+      console.error('Email/password sign-in failed after retries', lastError);
+      const code = lastError?.code || '';
+      const msg = lastError?.message || String(lastError) || 'Erro ao autenticar';
       if (code === 'auth/network-request-failed' || msg.toLowerCase().includes('network')) {
-        setAdminModalError('Falha de rede ao tentar autenticar. Tente novamente mais tarde.');
+        setAdminModalError('Falha de rede ao tentar autenticar. Verifique sua conexão, extensões de bloqueio (adblock/privacy) ou domínios autorizados no Firebase.');
       } else if (code === 'auth/user-not-found' || code === 'auth/wrong-password') {
         setAdminModalError('Email ou senha incorretos.');
       } else if (code === 'auth/invalid-email') {
