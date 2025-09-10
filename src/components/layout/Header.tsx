@@ -18,6 +18,8 @@ const Header = () => {
   const [adminModalError, setAdminModalError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authDomain, setAuthDomain] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
