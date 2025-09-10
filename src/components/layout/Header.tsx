@@ -50,7 +50,8 @@ const Header = () => {
 
   const toggleAdminFromHeader = () => {
     if (!isAdmin) {
-      setAdminModalKey('');
+      setAdminEmail('');
+      setAdminPassword('');
       setAdminModalError('');
       setShowAdminModal(true);
     } else {
