@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut as firebaseSignOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../../utils/firebaseClient';
 import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
@@ -16,6 +16,8 @@ const Header = () => {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminModalError, setAdminModalError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -62,6 +64,12 @@ const Header = () => {
   const submitAdminModal = async () => {
     if (!adminEmail || !adminPassword) { setAdminModalError('Insira email e senha'); return; }
 
+    // password min length
+    if (adminPassword.length < 8) {
+      setAdminModalError('A senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+
     // quick offline check
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setAdminModalError('Sem conexão de rede. Verifique sua internet e tente novamente.');
@@ -69,6 +77,13 @@ const Header = () => {
     }
 
     try {
+      // set persistence based on rememberMe
+      try {
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      } catch (pErr) {
+        console.warn('Failed to set persistence', pErr);
+      }
+
       // Sign in with email/password
       await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
     } catch (e: any) {
@@ -95,6 +110,8 @@ const Header = () => {
     setAdminEmail('');
     setAdminPassword('');
     setAdminModalError('');
+    setRememberMe(false);
+    setShowPassword(false);
     navigate('/admin-store');
   };
 
@@ -301,17 +318,34 @@ const Header = () => {
               placeholder="Email"
               autoComplete="off"
             />
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full border border-gray-200 rounded px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-secondary"
-              placeholder="Senha"
-              autoComplete="new-password"
-            />
+            <div className="relative mb-3">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full border border-gray-200 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-secondary"
+                placeholder="Senha"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 mb-3 text-sm">
+              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4" />
+              <span>Lembrar-me</span>
+            </label>
+
             {adminModalError && <div className="text-red-500 text-sm mb-3">{adminModalError}</div>}
+
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowAdminModal(false); setAdminEmail(''); setAdminPassword(''); setAdminModalError(''); }} className="px-4 py-2 border rounded">Cancelar</button>
+              <button onClick={() => { setShowAdminModal(false); setAdminEmail(''); setAdminPassword(''); setAdminModalError(''); setRememberMe(false); setShowPassword(false); }} className="px-4 py-2 border rounded">Cancelar</button>
               <button onClick={submitAdminModal} className="px-4 py-2 bg-primary text-white rounded">Acessar</button>
             </div>
           </div>
