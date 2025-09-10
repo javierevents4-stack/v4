@@ -369,9 +369,39 @@ const Header = () => {
 
             {adminModalError && (
               <div className="text-red-500 text-sm mb-3">
-                {adminModalError}
+                <div className="whitespace-pre-wrap">{adminModalError}</div>
+
+                {authDomain && (
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <code className="bg-gray-100 px-2 py-1 rounded text-xs">{authDomain}</code>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(authDomain);
+                          } else {
+                            const el = document.createElement('textarea');
+                            el.value = authDomain;
+                            document.body.appendChild(el);
+                            el.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(el);
+                          }
+                          setCopiedDomain(true);
+                          setTimeout(() => setCopiedDomain(false), 2000);
+                        } catch (err) {
+                          console.warn('copy failed', err);
+                        }
+                      }}
+                      className="px-3 py-1 border rounded text-sm"
+                    >
+                      {copiedDomain ? 'Copiado' : 'Copiar domínio'}
+                    </button>
+                  </div>
+                )}
+
                 <div className="mt-2 flex gap-2 justify-center">
-                  <button onClick={() => { setAdminModalError(''); setAdminEmail(''); setAdminPassword(''); }} className="px-3 py-1 border rounded text-sm">Limpar</button>
+                  <button onClick={() => { setAdminModalError(''); setAdminEmail(''); setAdminPassword(''); setAuthDomain(null); }} className="px-3 py-1 border rounded text-sm">Limpar</button>
                   <button onClick={submitAdminModal} className="px-3 py-1 bg-primary text-white rounded text-sm">Tentar novamente</button>
                 </div>
               </div>
