@@ -363,7 +363,15 @@ const Header = () => {
               <span>Lembrar-me</span>
             </label>
 
-            {adminModalError && <div className="text-red-500 text-sm mb-3">{adminModalError}</div>}
+            {adminModalError && (
+              <div className="text-red-500 text-sm mb-3">
+                {adminModalError}
+                <div className="mt-2 flex gap-2 justify-center">
+                  <button onClick={() => { setAdminModalError(''); setAdminEmail(''); setAdminPassword(''); }} className="px-3 py-1 border rounded text-sm">Limpar</button>
+                  <button onClick={submitAdminModal} className="px-3 py-1 bg-primary text-white rounded text-sm">Tentar novamente</button>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <button onClick={() => { setShowAdminModal(false); setAdminEmail(''); setAdminPassword(''); setAdminModalError(''); setRememberMe(false); setShowPassword(false); }} className="px-4 py-2 border rounded">Cancelar</button>
