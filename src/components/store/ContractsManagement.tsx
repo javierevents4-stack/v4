@@ -366,10 +366,12 @@ const ContractsManagement = () => {
                           {!wfEditMode && (
                             <input type="checkbox" checked={t.done} onChange={async (e)=>{
                               const checked = e.target.checked;
-                              // update local workflow state immediately
+                              // compute next workflow, update local state immediately and persist
+                              let nextWorkflowLocal: WorkflowCategory[] | null = null as any;
                               setWorkflow(wf=>{
                                 const next = wf ? [...wf] : [];
                                 next[ci] = { ...next[ci], tasks: next[ci].tasks.map((x, idx)=> idx===ti? { ...x, done: checked }: x)};
+                                nextWorkflowLocal = next;
                                 return next;
                               });
 
@@ -377,7 +379,7 @@ const ContractsManagement = () => {
                               if (!viewing) return;
                               setSavingWf(true);
                               try {
-                                const nextWorkflow = (workflow || []).map((c, cidx) => cidx===ci ? { ...c, tasks: c.tasks.map((x, idx) => idx===ti ? { ...x, done: checked } : x) } : c);
+                                const nextWorkflow = nextWorkflowLocal || (workflow || []);
                                 await updateDoc(doc(db, 'contracts', viewing.id), { workflow: nextWorkflow } as any);
                                 // update local contracts array so list reflects change
                                 setContracts(prev => (prev || []).map(p => p.id === viewing.id ? { ...p, workflow: nextWorkflow } : p));
