@@ -433,14 +433,34 @@ const ContractsManagement = () => {
                           </tr>
                         );
                       })}
-                      {Array.isArray(viewing.storeItems) && viewing.storeItems.map((it: any, idx: number) => (
-                        <tr key={`store-${idx}`} className="border-t">
-                          <td className="py-1">{it.name}</td>
-                          <td className="py-1">{Number(it.quantity)}</td>
-                          <td className="py-1">R$ {Number(it.price).toFixed(2)}</td>
-                          <td className="py-1">R$ {(Number(it.price) * Number(it.quantity)).toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {Array.isArray(viewing.storeItems) && viewing.storeItems.map((raw: any, idx: number) => {
+                        const it = ((): { name: string; quantity: number; price: number; total: number } => {
+                          try {
+                            if (!raw) return { name: '', quantity: 0, price: 0, total: 0 };
+                            // If stringified JSON, try to parse
+                            if (typeof raw === 'string') {
+                              try { raw = JSON.parse(raw); } catch(_) {}
+                            }
+                            // If nested under fields
+                            const name = raw.name || raw.title || raw.productName || raw.product || raw.item || '';
+                            const quantity = Number(raw.quantity ?? raw.qty ?? raw.count ?? 1) || 1;
+                            const price = Number(raw.price ?? raw.unitPrice ?? raw.amount ?? 0) || 0;
+                            const total = raw.total != null ? Number(raw.total) : price * quantity;
+                            return { name: String(name), quantity, price, total };
+                          } catch (err) {
+                            return { name: '', quantity: 0, price: 0, total: 0 };
+                          }
+                        })();
+
+                        return (
+                          <tr key={`store-${idx}`} className="border-t">
+                            <td className="py-1">{it.name || '—'}</td>
+                            <td className="py-1">{it.quantity}</td>
+                            <td className="py-1">R$ {it.price.toFixed(2)}</td>
+                            <td className="py-1">R$ {it.total.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
