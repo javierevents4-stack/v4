@@ -482,9 +482,9 @@ const OrdersManagement = () => {
             const cols = colorsFor(wf.length);
             return (
               <div key={o.id} className="grid grid-cols-12 p-3 items-center hover:bg-gray-50 cursor-pointer" onClick={() => openWorkflow(o)}>
-                    <div className="col-span-3 lowercase first-letter:uppercase">{o.customer_name || 'cliente'}</div>
-                <div className="col-span-2 text-sm text-gray-600">{o.created_at ? new Date(o.created_at).toLocaleDateString() : ''}</div>
-                <div className="col-span-1 font-semibold">${Number(o.total || 0).toFixed(0)}</div>
+                <div className="col-span-3 lowercase first-letter:uppercase">{o.customer_name || 'cliente'}</div>
+                <div className="col-span-2 text-sm text-gray-600">{o.created_at ? new Date(o.created_at).toLocaleDateString() + ', ' + new Date(o.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}</div>
+                <div className="col-span-1 font-semibold">${Number(o.total || o.totalAmount || 0).toFixed(0)}</div>
                 <div className="col-span-3">
                   <div className="w-full h-3 rounded bg-gray-200 overflow-hidden flex">
                     {segments.map((p, i) => (
@@ -493,6 +493,17 @@ const OrdersManagement = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+                <div className="col-span-1 text-right">
+                  {/* thumbnail */}
+                  { (o as any).thumbnail ? (
+                    <img src={(o as any).thumbnail} alt="thumb" className="w-12 h-8 object-cover rounded ml-auto" />
+                  ) : (
+                    // if no thumbnail, try to use first item image_url
+                    (Array.isArray(o.items) && (o.items as any[])[0] && (o.items as any[])[0].image_url) ? (
+                      <img src={(o.items as any[])[0].image_url} alt="thumb" className="w-12 h-8 object-cover rounded ml-auto" />
+                    ) : null
+                  )}
                 </div>
                 <div className="col-span-2 text-right">
                   {/* Row opens modal on click; actions removed */}
