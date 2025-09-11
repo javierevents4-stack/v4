@@ -480,18 +480,26 @@ const OrdersManagement = () => {
         if (matched) targetContractId = matched.id;
       }
 
-      // update local workflow state to mark entrega tasks done
-  const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
-  setWorkflow(updatedLocal);
-  // reflect paid & delivered state immediately in the open modal
-  setViewing(v => v ? { ...v, depositPaid: true, workflow: updatedLocal, status: 'completado' } as any : v);
+      // fallback: try to find contract by matching storeItems names to order items
+      if (!targetContractId) {
+        const items = getDisplayItems(viewing as OrderItem);
+        const onames = new Set(items.map(it => normalize(String(it.name || it.product_id || it.productId || ''))));
+        const found = Object.values(contractsMap).find((c: any) => Array.isArray(c.storeItems) && c.storeItems.some((si: any) => onames.has(normalize(String(si.name || '')))));
+        if (found) targetContractId = found.id;
+      }
 
-  // update order doc: mark as paid and delivered (completado)
-  try {
-    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: true, status: 'completado', deliveredAt: new Date().toISOString() } as any);
-  } catch (e) {
-    console.warn('Failed updating order with paid state', e);
-  }
+      // update local workflow state to mark entrega tasks done
+      const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
+      setWorkflow(updatedLocal);
+      // reflect paid & delivered state immediately in the open modal
+      setViewing(v => v ? { ...v, depositPaid: true, workflow: updatedLocal, status: 'completado' } as any : v);
+
+      // update order doc: mark as paid and delivered (completado)
+      try {
+        await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: true, status: 'completado', deliveredAt: new Date().toISOString() } as any);
+      } catch (e) {
+        console.warn('Failed updating order with paid state', e);
+      }
 
       // update contract if available
       if (targetContractId) {
@@ -535,6 +543,14 @@ const OrdersManagement = () => {
         const key = String(viewing.customer_email).toLowerCase().trim();
         const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
         if (matched) targetContractId = matched.id;
+      }
+
+      // fallback: try to find contract by matching storeItems names to order items
+      if (!targetContractId) {
+        const items = getDisplayItems(viewing as OrderItem);
+        const onames = new Set(items.map(it => normalize(String(it.name || it.product_id || it.productId || ''))));
+        const found = Object.values(contractsMap).find((c: any) => Array.isArray(c.storeItems) && c.storeItems.some((si: any) => onames.has(normalize(String(si.name || '')))));
+        if (found) targetContractId = found.id;
       }
 
       const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
