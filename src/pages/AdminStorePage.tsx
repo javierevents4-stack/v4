@@ -215,8 +215,7 @@ const AdminStorePage: React.FC = () => {
               {adminView === 'contracts' && <ContractsManagement />}
               {adminView === 'packages' && <PhotoPackagesManagement />}
               {adminView === 'settings' && <StoreSettings />}
-          {adminView === 'settings' && <StoreSettings />}
-        </div>
+            </div>
           </div>
         )}
 
