@@ -786,15 +786,21 @@ const OrdersManagement = () => {
 
                       return (
                         <div className="mt-4 p-4 border-t">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-4">
-                            <div className="text-sm text-gray-600 md:mr-6">Subtotal productos:</div>
-                            <div className="text-lg font-semibold text-red-600">${storeTotal.toFixed(2)}</div>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-gray-600">Subtotal productos:</div>
+                              <div className="text-lg font-semibold text-red-600">${storeTotal.toFixed(2)}</div>
+                            </div>
 
-                            <div className="text-sm text-gray-600 md:ml-6">Depósito (50%):</div>
-                            <div className="text-sm font-medium">${depositAmount.toFixed(2)} {depositPaid ? <span className="text-green-600 ml-2">(Pagado)</span> : <span className="text-gray-500 ml-2">(No pagado)</span>}</div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-gray-600">Depósito (50%):</div>
+                              <div className="text-sm font-medium text-green-600">${depositAmount.toFixed(2)} {depositPaid ? <span className="ml-2 text-sm text-green-700">(Pagado)</span> : <span className="ml-2 text-sm text-gray-500">(No pagado)</span>}</div>
+                            </div>
 
-                            <div className="text-sm text-gray-600 md:ml-6">Restante a pagar en entrega:</div>
-                            <div className="text-sm font-medium">${remaining.toFixed(2)}</div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-gray-600">Restante</div>
+                              <div className="text-sm font-medium">${remaining.toFixed(2)}</div>
+                            </div>
                           </div>
                         </div>
                       );
