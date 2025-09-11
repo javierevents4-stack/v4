@@ -467,6 +467,105 @@ const OrdersManagement = () => {
     }
   };
 
+  // New handlers: mark delivery as paid (marks entrega tasks as done on contract and order), and reset
+  const markDeliveryPaid = async () => {
+    if (!viewing) return;
+    setSavingWf(true);
+    try {
+      // determine target contract id
+      let targetContractId = viewing.contractId || null;
+      if (!targetContractId && viewing.customer_email) {
+        const key = String(viewing.customer_email).toLowerCase().trim();
+        const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+        if (matched) targetContractId = matched.id;
+      }
+
+      // update local workflow state to mark entrega tasks done
+      const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
+      setWorkflow(updatedLocal);
+
+      // update order doc
+      try {
+        await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: true } as any);
+      } catch (e) {
+        console.warn('Failed updating order with paid state', e);
+      }
+
+      // update contract if available
+      if (targetContractId) {
+        try {
+          const cRef = doc(db, 'contracts', targetContractId);
+          const cSnap = await getDoc(cRef);
+          if (cSnap.exists()) {
+            const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
+            const base = (contract.workflow && contract.workflow.length) ? contract.workflow : [];
+            const items = getDisplayItems(viewing as OrderItem);
+            const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+            const merged = ensureDeliveryTasks(base, names);
+            // mark entrega tasks done
+            merged.forEach(cat => {
+              if (normalize(cat.name).includes('entrega')) cat.tasks = cat.tasks.map(t => ({ ...t, done: true }));
+            });
+            await updateDoc(cRef, { workflow: merged, depositPaid: true } as any);
+          }
+        } catch (e) {
+          console.warn('Failed updating contract workflow on mark paid', e);
+        }
+      }
+
+      // refresh orders map
+      await fetchOrders();
+    } finally {
+      setSavingWf(false);
+    }
+  };
+
+  const resetDeliveryPaid = async () => {
+    if (!viewing) return;
+    setSavingWf(true);
+    try {
+      let targetContractId = viewing.contractId || null;
+      if (!targetContractId && viewing.customer_email) {
+        const key = String(viewing.customer_email).toLowerCase().trim();
+        const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
+        if (matched) targetContractId = matched.id;
+      }
+
+      const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
+      setWorkflow(updatedLocal);
+
+      try {
+        await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false } as any);
+      } catch (e) {
+        console.warn('Failed resetting order paid state', e);
+      }
+
+      if (targetContractId) {
+        try {
+          const cRef = doc(db, 'contracts', targetContractId);
+          const cSnap = await getDoc(cRef);
+          if (cSnap.exists()) {
+            const contract = { id: cSnap.id, ...(cSnap.data() as any) } as any;
+            const base = (contract.workflow && contract.workflow.length) ? contract.workflow : [];
+            const items = getDisplayItems(viewing as OrderItem);
+            const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
+            const merged = ensureDeliveryTasks(base, names);
+            merged.forEach(cat => {
+              if (normalize(cat.name).includes('entrega')) cat.tasks = cat.tasks.map(t => ({ ...t, done: false }));
+            });
+            await updateDoc(cRef, { workflow: merged, depositPaid: false } as any);
+          }
+        } catch (e) {
+          console.warn('Failed resetting contract workflow', e);
+        }
+      }
+
+      await fetchOrders();
+    } finally {
+      setSavingWf(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -527,7 +626,7 @@ const OrdersManagement = () => {
               <div key={o.id} className="grid grid-cols-12 p-3 items-center hover:bg-gray-50 cursor-pointer" onClick={() => openWorkflow(o)}>
                 <div className="col-span-3 lowercase first-letter:uppercase">{o.customer_name || 'cliente'}</div>
                 <div className="col-span-2 text-sm text-gray-600">{o.created_at ? new Date(o.created_at).toLocaleDateString() + ', ' + new Date(o.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : ''}</div>
-                <div className="col-span-1 font-semibold">${Number(o.total || o.totalAmount || 0).toFixed(0)}</div>
+                <div className="col-span-1 font-semibold">R${Number(o.total || o.totalAmount || 0).toFixed(0)}</div>
                 <div className="col-span-3">
                   <div className="w-full h-3 rounded bg-gray-200 overflow-hidden flex">
                     {segments.map((p, i) => (
@@ -721,7 +820,7 @@ const OrdersManagement = () => {
                   <div><span className="text-gray-600">Email:</span> <span className="font-medium">{viewing.customer_email || '-'}</span></div>
                   <div><span className="text-gray-600">Fecha:</span> <span className="font-medium">{viewing.created_at ? new Date(viewing.created_at).toLocaleString() : '-'}</span></div>
                   <div><span className="text-gray-600">Método de pago:</span> <span className="font-medium">{viewing.payment_method || '-'}</span></div>
-                  <div><span className="text-gray-600">Total:</span> <span className="font-medium">${Number(viewing.total || 0).toFixed(0)}</span></div>
+                  <div><span className="text-gray-600">Total:</span> <span className="font-medium">R${Number(viewing.total || 0).toFixed(0)}</span></div>
                 </div>
 
                 <div>
@@ -733,14 +832,13 @@ const OrdersManagement = () => {
                           <th className="py-1">Producto</th>
                           <th className="py-1">Cant.</th>
                           <th className="py-1">Precio</th>
-                          <th className="py-1">Total</th>
                         </tr>
                       </thead>
                       <tbody>
                         {getDisplayItems(viewing).map((it, idx) => {
                           const qty = Number(it.qty ?? it.quantity ?? 1);
                           const price = Number(it.price ?? 0);
-                          const total = it.total != null ? Number(it.total) : price * qty;
+                          // removed per-row total as requested
                           return (
                             <tr key={idx} className="border-t">
                               <td className="py-1">
@@ -754,13 +852,12 @@ const OrdersManagement = () => {
                                 </div>
                               </td>
                               <td className="py-1">{qty}</td>
-                              <td className="py-1">${price.toFixed(0)}</td>
-                              <td className="py-1">${total.toFixed(0)}</td>
+                              <td className="py-1">R${price.toFixed(0)}</td>
                             </tr>
                           );
                         })}
                         {getDisplayItems(viewing).length === 0 && (
-                          <tr className="border-t"><td className="py-2 text-gray-500" colSpan={4}>Sin productos</td></tr>
+                          <tr className="border-t"><td className="py-2 text-gray-500" colSpan={3}>Sin productos</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -781,25 +878,30 @@ const OrdersManagement = () => {
                       }
 
                       const depositAmount = Math.round((storeTotal * 0.5) * 100) / 100; // 50% of store items
+                      // show restante as subtotal - deposito (always)
+                      const remaining = Math.max(0, storeTotal - depositAmount);
                       const depositPaid = Boolean(contract && contract.depositPaid) || Boolean((viewing as any)?.depositPaid);
-                      const remaining = Math.max(0, storeTotal - (depositPaid ? depositAmount : 0));
 
                       return (
                         <div className="mt-4 p-4 border-t">
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between">
                               <div className="text-sm text-gray-600">Subtotal productos:</div>
-                              <div className="text-lg font-semibold text-red-600">${storeTotal.toFixed(2)}</div>
+                              <div className="text-lg font-semibold text-red-600">R${storeTotal.toFixed(2)}</div>
                             </div>
 
                             <div className="flex items-center justify-between">
-                              <div className="text-sm text-gray-600">Depósito (50%):</div>
-                              <div className="text-sm font-medium text-green-600">${depositAmount.toFixed(2)} {depositPaid ? <span className="ml-2 text-sm text-green-700">(Pagado)</span> : <span className="ml-2 text-sm text-gray-500">(No pagado)</span>}</div>
+                              <div className="text-sm font-medium text-green-600">Depósito (50%):</div>
+                              <div className="text-sm font-medium text-green-600">R${depositAmount.toFixed(2)} {depositPaid ? <span className="ml-2 text-sm text-green-700">(Pagado)</span> : <span className="ml-2 text-sm text-gray-500">(No pagado)</span>}</div>
                             </div>
 
                             <div className="flex items-center justify-between">
                               <div className="text-sm text-gray-600">Restante</div>
-                              <div className="text-sm font-medium">${remaining.toFixed(2)}</div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-sm font-medium text-green-600">R${remaining.toFixed(2)}</div>
+                                <button onClick={markDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded bg-green-600 text-white text-sm">{savingWf ? 'Procesando...' : 'Pagado'}</button>
+                                <button onClick={resetDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded text-sm">Reiniciar</button>
+                              </div>
                             </div>
                           </div>
                         </div>
