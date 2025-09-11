@@ -65,7 +65,7 @@ const OrdersManagement = () => {
   const [productsById, setProductsById] = useState<Record<string, any>>({});
   const [productsByName, setProductsByName] = useState<Record<string, any>>({});
 
-  const normalize = (s: string) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  const normalizeStr = (s: string) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 
   const resolveImageForItem = (it: any) => {
     if (!it) return undefined;
