@@ -15,6 +15,29 @@ const HomePage = () => {
   const { user } = useAuth();
 
   const isAdmin = !!user && user.email === 'javierevents2@gmail.com';
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // If navigated with state.scrollTo, perform the scroll and clear state
+    try {
+      const target = (location.state as any)?.scrollTo;
+      if (target === 'nossos-servicos') {
+        const el = document.getElementById('nossos-servicos');
+        if (el) {
+          const header = document.querySelector('header');
+          const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
+          const rect = el.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const extraDown = 80;
+          const top = rect.top + scrollTop - headerHeight + extraDown;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+        // clear navigation state so subsequent visits don't auto-scroll
+        try { navigate(location.pathname, { replace: true, state: {} }); } catch(_){}
+      }
+    } catch (_) {}
+  }, [location, navigate]);
 
   return (
     <>
