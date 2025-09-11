@@ -129,27 +129,28 @@ const OrdersManagement = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
-  useEffect(() => {
-    const loadContracts = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'contracts'));
-        const map: Record<string, any> = {};
-        const byEmail: Record<string, any> = {};
-        snap.docs.forEach(d => {
-          const data = { id: d.id, ...(d.data() as any) };
-          map[d.id] = data;
-          const email = String((data.clientEmail || data.client_email || '').toLowerCase()).trim();
-          if (email) byEmail[email] = data;
-        });
-        setContractsMap(map);
-        setContractsByEmail(byEmail);
-      } catch (e) {
-        setContractsMap({});
-        setContractsByEmail({});
-      }
-    };
-    loadContracts();
-  }, []);
+  const loadContractsMap = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'contracts'));
+      const map: Record<string, any> = {};
+      const byEmail: Record<string, any> = {};
+      snap.docs.forEach(d => {
+        const data = { id: d.id, ...(d.data() as any) };
+        map[d.id] = data;
+        const email = String((data.clientEmail || data.client_email || '').toLowerCase()).trim();
+        if (email) byEmail[email] = data;
+      });
+      setContractsMap(map);
+      setContractsByEmail(byEmail);
+      return { map, byEmail };
+    } catch (e) {
+      setContractsMap({});
+      setContractsByEmail({});
+      return { map: {}, byEmail: {} };
+    }
+  };
+
+  useEffect(() => { loadContractsMap(); }, []);
 
   const filtered = useMemo(() => {
     return orders.filter(o => {
@@ -577,7 +578,7 @@ const OrdersManagement = () => {
                   {wfEditMode && (
                     <button onClick={()=>{
                       setWorkflow(w=>{ const n = w? [...w]:[]; n.push({ id: uid(), name: 'Nueva categoría', tasks: [] }); return n;});
-                    }} className="border-2 border-black text-black px-3 py-2 rounded-none hover:bg-black hover:text-white inline-flex items-center gap-2"><Plus size={14}/> A��adir categoría</button>
+                    }} className="border-2 border-black text-black px-3 py-2 rounded-none hover:bg-black hover:text-white inline-flex items-center gap-2"><Plus size={14}/> Añadir categoría</button>
                   )}
                   <div className="ml-auto flex items-center gap-2">
                     <select onChange={(e)=>{ const id = e.target.value; const tpl = templates.find(t=>t.id===id) || null; applyTemplateToOrder(tpl); }} className="border px-2 py-2 rounded-none text-sm">
