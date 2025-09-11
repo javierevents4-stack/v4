@@ -444,6 +444,7 @@ const ContractsManagement = () => {
             </div>
             <div className="md:col-span-2 p-4 max-h-[70vh] overflow-auto space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-gray-600">ID:</span> <span className="font-medium">{viewing.id}</span></div>
                 <div><span className="text-gray-600">Nombre:</span> <span className="font-medium">{viewing.clientName}</span></div>
                 <div><span className="text-gray-600">Email:</span> <span className="font-medium">{viewing.clientEmail}</span></div>
                 <div><span className="text-gray-600">Tipo de evento:</span> <span className="font-medium">{viewing.eventType || '-'}</span></div>
