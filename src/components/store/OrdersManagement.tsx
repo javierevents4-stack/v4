@@ -750,7 +750,7 @@ const OrdersManagement = () => {
                                     if (imgSrc) return (<img src={imgSrc} alt={String(it.name||'product')} className="w-12 h-12 object-cover rounded" />);
                                     return (<div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-500">No img</div>);
                                   })() }
-                                  <div className="truncate">{it.name || it.product_id || it.productId || '��'}</div>
+                                  <div className="truncate">{it.name || it.product_id || it.productId || '—'}</div>
                                 </div>
                               </td>
                               <td className="py-1">{qty}</td>
@@ -765,6 +765,42 @@ const OrdersManagement = () => {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Summary: total products, deposit, remaining */}
+                  {
+                    (() => {
+                      const contract = viewing && viewing.contractId ? contractsMap[viewing.contractId] : null;
+                      // compute store total: prefer contract.storeItems if available
+                      let storeTotal = 0;
+                      if (contract && Array.isArray(contract.storeItems) && contract.storeItems.length > 0) {
+                        storeTotal = contract.storeItems.reduce((s: number, it: any) => s + (Number(it.price ?? 0) * Number(it.quantity ?? it.qty ?? 1)), 0);
+                      } else if (viewing) {
+                        // fallback to summing displayed items
+                        const disp = getDisplayItems(viewing);
+                        storeTotal = disp.reduce((s, it: any) => s + (Number(it.total ?? (it.price ?? 0) * (it.qty ?? it.quantity ?? 1)) ), 0);
+                      }
+
+                      const depositAmount = Math.round((storeTotal * 0.5) * 100) / 100; // 50% of store items
+                      const depositPaid = Boolean(contract && contract.depositPaid) || Boolean((viewing as any)?.depositPaid);
+                      const remaining = Math.max(0, storeTotal - (depositPaid ? depositAmount : 0));
+
+                      return (
+                        <div className="mt-4 p-4 border-t">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-4">
+                            <div className="text-sm text-gray-600 md:mr-6">Subtotal productos:</div>
+                            <div className="text-lg font-semibold text-red-600">${storeTotal.toFixed(2)}</div>
+
+                            <div className="text-sm text-gray-600 md:ml-6">Depósito (50%):</div>
+                            <div className="text-sm font-medium">${depositAmount.toFixed(2)} {depositPaid ? <span className="text-green-600 ml-2">(Pagado)</span> : <span className="text-gray-500 ml-2">(No pagado)</span>}</div>
+
+                            <div className="text-sm text-gray-600 md:ml-6">Restante a pagar en entrega:</div>
+                            <div className="text-sm font-medium">${remaining.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  }
+
                 </div>
               </div>
             </div>
