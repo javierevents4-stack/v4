@@ -364,12 +364,28 @@ const ContractsManagement = () => {
                       {cat.tasks.map((t, ti) => (
                         <div key={t.id} className="flex items-start gap-2">
                           {!wfEditMode && (
-                            <input type="checkbox" checked={t.done} onChange={(e)=>{
+                            <input type="checkbox" checked={t.done} onChange={async (e)=>{
+                              const checked = e.target.checked;
+                              // update local workflow state immediately
                               setWorkflow(wf=>{
                                 const next = wf ? [...wf] : [];
-                                next[ci] = { ...next[ci], tasks: next[ci].tasks.map((x, idx)=> idx===ti? { ...x, done: e.target.checked }: x)};
+                                next[ci] = { ...next[ci], tasks: next[ci].tasks.map((x, idx)=> idx===ti? { ...x, done: checked }: x)};
                                 return next;
                               });
+
+                              // persist change to contracts collection automatically
+                              if (!viewing) return;
+                              setSavingWf(true);
+                              try {
+                                const nextWorkflow = (workflow || []).map((c, cidx) => cidx===ci ? { ...c, tasks: c.tasks.map((x, idx) => idx===ti ? { ...x, done: checked } : x) } : c);
+                                await updateDoc(doc(db, 'contracts', viewing.id), { workflow: nextWorkflow } as any);
+                                // update local contracts array so list reflects change
+                                setContracts(prev => (prev || []).map(p => p.id === viewing.id ? { ...p, workflow: nextWorkflow } : p));
+                              } catch (err) {
+                                console.warn('Error auto-saving contract workflow change', err);
+                              } finally {
+                                setSavingWf(false);
+                              }
                             }} />
                           )}
                           <div className="flex-1">
