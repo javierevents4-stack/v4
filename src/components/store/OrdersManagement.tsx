@@ -253,6 +253,10 @@ const OrdersManagement = () => {
 
   const openWorkflow = async (o: OrderItem) => {
     setViewing(o);
+    // ensure contracts map is loaded to display store items correctly
+    if (!contractsMap || Object.keys(contractsMap).length === 0) {
+      await loadContractsMap();
+    }
     const base = (o.workflow && o.workflow.length) ? o.workflow : [];
     const items = getDisplayItems(o);
     const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
