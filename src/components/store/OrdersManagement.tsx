@@ -65,6 +65,22 @@ const OrdersManagement = () => {
   const [productsById, setProductsById] = useState<Record<string, any>>({});
   const [productsByName, setProductsByName] = useState<Record<string, any>>({});
 
+  const normalize = (s: string) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+  const resolveImageForItem = (it: any) => {
+    if (!it) return undefined;
+    // Prefer explicit image fields on the order item
+    const candidates = [it.image_url, it.image, it.img, it.imageUrl, it.thumbnail].filter(Boolean);
+    if (candidates.length) return candidates[0];
+    // Try product id
+    const pid = it.productId || it.product_id || it.productId || it.id;
+    if (pid && productsById[pid] && productsById[pid].image_url) return productsById[pid].image_url;
+    // Try by name
+    const nameKey = normalize(it.name || it.product_name || it.title || '');
+    if (nameKey && productsByName[nameKey] && productsByName[nameKey].image_url) return productsByName[nameKey].image_url;
+    return undefined;
+  };
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
