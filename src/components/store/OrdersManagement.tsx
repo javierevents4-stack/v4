@@ -83,7 +83,7 @@ const OrdersManagement = () => {
         }
       }
 
-      // If there are no explicit orders, create per-product orders from contracts when missing
+      // Ensure every contract with storeItems has a single order record (aggregate per contract)
       if ((!items || items.length === 0)) {
         try {
           const csnap = await getDocs(query(collection(db, 'contracts'), orderBy('createdAt', 'desc')));
@@ -95,39 +95,80 @@ const OrdersManagement = () => {
             const storeItems = Array.isArray(c.storeItems) ? c.storeItems : [];
             if (!storeItems.length) continue;
 
-            // check if any orders already exist for this contract
+            // find existing orders for this contract
+            let existingOrders: any[] = [];
             try {
               const existingSnap = await getDocs(query(collection(db, 'orders'), where('contractId', '==', c.id)));
               if (!existingSnap.empty) {
-                existingSnap.docs.forEach(d => generated.push({ id: d.id, ...(d.data() as any) } as OrderItem));
-                continue;
+                existingOrders = existingSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
               }
             } catch (e) {
-              // ignore and proceed to create orders
+              console.warn('Error checking existing orders for contract', c.id, e);
             }
 
-            for (const si of storeItems) {
+            if (existingOrders.length > 0) {
+              // aggregate items from existing orders into one display entry
+              const aggItems: OrderLineItem[] = [];
+              let totalAmt = 0;
+              let createdAt = existingOrders[0].createdAt || existingOrders[0].created_at || new Date().toISOString();
+              let thumbnail: string | undefined;
+
+              for (const eo of existingOrders) {
+                const its = Array.isArray(eo.items) ? eo.items : [];
+                its.forEach((it: any) => {
+                  const qty = Number(it.quantity ?? it.qty ?? it.qty) || Number(it.qty ?? it.quantity ?? 1) || 1;
+                  const price = Number(it.price ?? 0) || 0;
+                  const total = it.total != null ? Number(it.total) : price * qty;
+                  aggItems.push({ name: it.name || it.product_id || '', qty: qty, price, total });
+                  totalAmt += total;
+                  if (!thumbnail && it.image_url) thumbnail = it.image_url;
+                });
+                createdAt = createdAt || (eo.createdAt || eo.created_at);
+              }
+
+              generated.push({
+                id: existingOrders[0].id,
+                customer_name: c.clientName || c.client_name || '',
+                customer_email: c.clientEmail || c.client_email || '',
+                items: aggItems,
+                total: totalAmt,
+                created_at: createdAt,
+                status: existingOrders[0].status || 'pendiente',
+                workflow: c.workflow || undefined,
+                contractId: c.id,
+                // @ts-ignore - attach thumbnail for UI
+                thumbnail
+              } as OrderItem);
+
+              continue;
+            }
+
+            // No existing order: create a single aggregated order for the contract
+            const itemsForOrder = storeItems.map((si: any) => {
               const qty = Number(si.quantity ?? si.qty ?? 1) || 1;
               const price = Number(si.price ?? 0) || 0;
               const total = si.total != null ? Number(si.total) : price * qty;
+              return { name: si.name || si.title || '', quantity: qty, price, total, image_url: si.image_url };
+            });
 
-              const orderData: any = {
-                clientName: c.clientName || c.client_name || '',
-                clientEmail: c.clientEmail || c.client_email || '',
-                items: [{ name: si.name || si.title || '', quantity: qty, price, total }],
-                totalAmount: total + Number(c.travelFee || 0),
-                status: 'pending',
-                paymentMethod: c.paymentMethod || '',
-                contractId: c.id,
-                createdAt: c.contractDate || c.createdAt || new Date().toISOString()
-              };
+            const total = itemsForOrder.reduce((s, it) => s + Number(it.total || 0), 0) + Number(c.travelFee || 0);
 
-              try {
-                const refDoc = await addDoc(collection(db, 'orders'), orderData);
-                generated.push({ id: refDoc.id, ...orderData } as OrderItem);
-              } catch (e) {
-                console.warn('Failed to create order for contract', c.id, si, e);
-              }
+            const orderData: any = {
+              clientName: c.clientName || c.client_name || '',
+              clientEmail: c.clientEmail || c.client_email || '',
+              items: itemsForOrder,
+              totalAmount: total,
+              status: 'pending',
+              paymentMethod: c.paymentMethod || '',
+              contractId: c.id,
+              createdAt: c.contractDate || c.createdAt || new Date().toISOString()
+            };
+
+            try {
+              const refDoc = await addDoc(collection(db, 'orders'), orderData);
+              generated.push({ id: refDoc.id, ...orderData, thumbnail: (itemsForOrder[0] && (itemsForOrder[0] as any).image_url) } as OrderItem);
+            } catch (e) {
+              console.warn('Failed to create aggregated order for contract', c.id, e);
             }
           }
 
