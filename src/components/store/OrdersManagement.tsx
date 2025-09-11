@@ -566,17 +566,28 @@ const OrdersManagement = () => {
         if (found) targetContractId = found.id;
       }
 
+      // Force-uncheck entrega tasks in local workflow (modal)
       const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
-  setWorkflow(updatedLocal);
-  // reflect reset state immediately in the open modal
-  setViewing(v => v ? { ...v, depositPaid: false, workflow: updatedLocal, status: 'pendiente' } as any : v);
+      setWorkflow(updatedLocal);
+      // reflect reset state immediately in the open modal
+      setViewing(v => v ? { ...v, depositPaid: false, workflow: updatedLocal, status: 'pendiente' } as any : v);
 
-  try {
-    // revert fields set by Pagado, including deliveredAt
-    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false, status: 'pendiente', deliveredAt: null } as any);
-  } catch (e) {
-    console.warn('Failed resetting order paid state', e);
-  }
+      // Persist: reset order workflow tasks that are entrega to false
+      try {
+        const oRef = doc(db, 'orders', viewing.id);
+        const oSnap = await getDoc(oRef);
+        let orderToSave: any = { workflow: updatedLocal, depositPaid: false, status: 'pendiente', deliveredAt: null };
+        // ensure we explicitly set entrega tasks to false in stored workflow (in case structure differs)
+        try {
+          const existing = oSnap.exists() ? (oSnap.data() as any) : null;
+          if (existing && Array.isArray(existing.workflow)) {
+            orderToSave.workflow = existing.workflow.map((cat: any) => ({ ...cat, tasks: (cat.tasks || []).map((t: any) => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : (t.done||false) })) }));
+          }
+        } catch (e) { /* ignore */ }
+        await updateDoc(oRef, orderToSave as any);
+      } catch (e) {
+        console.warn('Failed resetting order paid state', e);
+      }
 
       if (targetContractId) {
         try {
@@ -588,12 +599,11 @@ const OrdersManagement = () => {
             const items = getDisplayItems(viewing as OrderItem);
             const names = items.map(it => String(it.name || it.product_id || it.productId || ''));
             const merged = ensureDeliveryTasks(base, names);
-            merged.forEach(cat => {
-              if (normalize(cat.name).includes('entrega')) cat.tasks = cat.tasks.map(t => ({ ...t, done: false }));
-            });
-            await updateDoc(cRef, { workflow: merged, depositPaid: false } as any);
-            // refresh local contracts map so UI reads updated depositPaid
-            await loadContractsMap();
+            // Force uncheck any entrega tasks in merged
+            const mergedReset = merged.map((cat: any) => ({ ...cat, tasks: (cat.tasks || []).map((t: any) => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : (t.done||false) })) }));
+            await updateDoc(cRef, { workflow: mergedReset, depositPaid: false } as any);
+            // update local contractsMap so UI reads updated depositPaid and workflow
+            try { setContractsMap(prev=> ({ ...(prev||{}), [contract.id]: { ...(prev && prev[contract.id]? prev[contract.id]: contract), workflow: mergedReset, depositPaid: false } })); } catch(e){}
           }
         } catch (e) {
           console.warn('Failed resetting contract workflow', e);
@@ -606,10 +616,10 @@ const OrdersManagement = () => {
 
       // reload the updated order from db and reflect its workflow/depositPaid in modal
       try {
-        const oRef = doc(db, 'orders', viewing.id);
-        const oSnap = await getDoc(oRef);
-        if (oSnap.exists()) {
-          const oData = { id: oSnap.id, ...(oSnap.data() as any) } as OrderItem;
+        const oRef2 = doc(db, 'orders', viewing.id);
+        const oSnap2 = await getDoc(oRef2);
+        if (oSnap2.exists()) {
+          const oData = { id: oSnap2.id, ...(oSnap2.data() as any) } as OrderItem;
           if (oData.workflow && oData.workflow.length) setWorkflow(oData.workflow as WorkflowCategory[]);
           setViewing(v => v ? { ...v, depositPaid: !!oData.depositPaid, workflow: oData.workflow || v.workflow, status: oData.status || v.status } as any : v);
         }
