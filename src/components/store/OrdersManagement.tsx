@@ -483,15 +483,15 @@ const OrdersManagement = () => {
       // update local workflow state to mark entrega tasks done
   const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
   setWorkflow(updatedLocal);
-  // reflect paid state immediately in the open modal
-  setViewing(v => v ? { ...v, depositPaid: true } as any : v);
+  // reflect paid & delivered state immediately in the open modal
+  setViewing(v => v ? { ...v, depositPaid: true, workflow: updatedLocal, status: 'completado' } as any : v);
 
-      // update order doc
-      try {
-        await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: true } as any);
-      } catch (e) {
-        console.warn('Failed updating order with paid state', e);
-      }
+  // update order doc: mark as paid and delivered (completado)
+  try {
+    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: true, status: 'completado', deliveredAt: new Date().toISOString() } as any);
+  } catch (e) {
+    console.warn('Failed updating order with paid state', e);
+  }
 
       // update contract if available
       if (targetContractId) {
@@ -540,13 +540,13 @@ const OrdersManagement = () => {
       const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
   setWorkflow(updatedLocal);
   // reflect reset state immediately in the open modal
-  setViewing(v => v ? { ...v, depositPaid: false } as any : v);
+  setViewing(v => v ? { ...v, depositPaid: false, workflow: updatedLocal, status: 'pendiente' } as any : v);
 
-      try {
-        await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false } as any);
-      } catch (e) {
-        console.warn('Failed resetting order paid state', e);
-      }
+  try {
+    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false, status: 'pendiente' } as any);
+  } catch (e) {
+    console.warn('Failed resetting order paid state', e);
+  }
 
       if (targetContractId) {
         try {
