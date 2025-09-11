@@ -73,6 +73,26 @@ const OrdersManagement = () => {
         return;
       }
       let items: OrderItem[] = [];
+
+      // load products map for automatic image lookup
+      try {
+        const psnap = await getDocs(collection(db, 'products'));
+        const byId: Record<string, any> = {};
+        const byName: Record<string, any> = {};
+        psnap.docs.forEach(pdoc => {
+          const pdata = pdoc.data() as any;
+          byId[pdoc.id] = pdata;
+          const nameKey = String((pdata.name || '')).toLowerCase().trim();
+          if (nameKey) byName[nameKey] = pdata;
+        });
+        setProductsById(byId);
+        setProductsByName(byName);
+      } catch (e) {
+        // ignore product load errors
+        setProductsById({});
+        setProductsByName({});
+      }
+
       try {
         const snap = await getDocs(query(collection(db, 'orders'), orderBy('created_at', 'desc')));
         items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
