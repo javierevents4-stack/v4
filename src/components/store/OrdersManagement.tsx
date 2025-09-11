@@ -543,7 +543,8 @@ const OrdersManagement = () => {
   setViewing(v => v ? { ...v, depositPaid: false, workflow: updatedLocal, status: 'pendiente' } as any : v);
 
   try {
-    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false, status: 'pendiente' } as any);
+    // revert fields set by Pagado, including deliveredAt
+    await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false, status: 'pendiente', deliveredAt: null } as any);
   } catch (e) {
     console.warn('Failed resetting order paid state', e);
   }
