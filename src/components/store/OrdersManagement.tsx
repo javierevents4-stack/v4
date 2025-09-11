@@ -61,6 +61,10 @@ const OrdersManagement = () => {
   const [contractsByEmail, setContractsByEmail] = useState<Record<string, any>>({});
   const [linking, setLinking] = useState(false);
 
+  // products lookup to automatically get image_url by product id or name
+  const [productsById, setProductsById] = useState<Record<string, any>>({});
+  const [productsByName, setProductsByName] = useState<Record<string, any>>({});
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
