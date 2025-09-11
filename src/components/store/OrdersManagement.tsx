@@ -162,7 +162,10 @@ const OrdersManagement = () => {
                 const total = it.total != null ? Number(it.total) : price * qty;
                 aggItems.push({ name: it.name || it.product_id || '', qty: qty, price, total });
                 totalAmt += total;
-                if (!thumbnail && it.image_url) thumbnail = it.image_url;
+                if (!thumbnail) {
+                  const resolved = resolveImageForItem(it);
+                  if (resolved) thumbnail = resolved;
+                }
               });
               createdAt = createdAt || (eo.createdAt || eo.created_at);
             }
