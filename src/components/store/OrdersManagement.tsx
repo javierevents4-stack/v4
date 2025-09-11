@@ -481,8 +481,10 @@ const OrdersManagement = () => {
       }
 
       // update local workflow state to mark entrega tasks done
-      const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
-      setWorkflow(updatedLocal);
+  const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? true : t.done })) }));
+  setWorkflow(updatedLocal);
+  // reflect paid state immediately in the open modal
+  setViewing(v => v ? { ...v, depositPaid: true } as any : v);
 
       // update order doc
       try {
@@ -532,7 +534,9 @@ const OrdersManagement = () => {
       }
 
       const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
-      setWorkflow(updatedLocal);
+  setWorkflow(updatedLocal);
+  // reflect reset state immediately in the open modal
+  setViewing(v => v ? { ...v, depositPaid: false } as any : v);
 
       try {
         await updateDoc(doc(db, 'orders', viewing.id), { workflow: updatedLocal, depositPaid: false } as any);
@@ -898,7 +902,7 @@ const OrdersManagement = () => {
                             <div className="flex items-center justify-between">
                               <div className="text-sm text-gray-600">Restante</div>
                               <div className="flex items-center gap-3">
-                                <div className="text-sm font-medium text-green-600">R${remaining.toFixed(2)}</div>
+                                <div className={`text-sm font-medium ${depositPaid ? 'text-green-600' : 'text-red-600'}`}>R${remaining.toFixed(2)}</div>
                                 <button onClick={markDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded bg-green-600 text-white text-sm">{savingWf ? 'Procesando...' : 'Pagado'}</button>
                                 <button onClick={resetDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded text-sm">Reiniciar</button>
                               </div>
