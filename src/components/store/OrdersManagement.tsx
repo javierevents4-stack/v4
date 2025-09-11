@@ -187,11 +187,51 @@ const OrdersManagement = () => {
       const key = String(o.customer_email).toLowerCase().trim();
       c = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
     }
+
+    const orderItems = Array.isArray(o.items) ? o.items : [];
+
     if (c && Array.isArray(c.storeItems) && c.storeItems.length) {
-      const names = new Set((c.storeItems || []).map((it: any) => normalize(String(it.name || ''))));
-      return (o.items || []).filter(it => names.has(normalize(String(it.name || it.product_id || it.productId || ''))));
+      // Build canonical contract items
+      const contractItems = (c.storeItems || []).map((si: any) => ({
+        name: si.name || si.productName || si.title || '',
+        quantity: Number(si.quantity ?? si.qty ?? 1),
+        price: Number(si.price ?? 0),
+        total: si.total != null ? Number(si.total) : Number(si.price ?? 0) * Number(si.quantity ?? si.qty ?? 1),
+      }));
+
+      const norm = (s: string) => normalize(String(s || ''));
+      const contractNames = new Set(contractItems.map(ci => norm(ci.name)));
+
+      // Merge: prefer order item values when present, otherwise fallback to contract item
+      const merged = contractItems.map(ci => {
+        const match = orderItems.find(oi => norm(oi.name || oi.product_id || oi.productId || '') === norm(ci.name));
+        if (match) {
+          const qty = Number(match.qty ?? match.quantity ?? ci.quantity);
+          const price = Number(match.price ?? match.price ?? ci.price);
+          const total = match.total != null ? Number(match.total) : price * qty;
+          return { name: match.name || ci.name, qty, price, total } as OrderLineItem;
+        }
+        return { name: ci.name, qty: ci.quantity, price: ci.price, total: ci.total } as OrderLineItem;
+      });
+
+      // Any extra items present in orderItems that are not in contract storeItems
+      const extras = orderItems.filter(oi => !contractNames.has(norm(oi.name || oi.product_id || oi.productId || ''))).map(e => ({
+        name: e.name || e.product_id || e.productId || '',
+        qty: Number(e.qty ?? e.quantity ?? 1),
+        price: Number(e.price ?? 0),
+        total: e.total != null ? Number(e.total) : Number(e.price ?? 0) * Number(e.qty ?? e.quantity ?? 1),
+      } as OrderLineItem));
+
+      return [...merged, ...extras];
     }
-    return o.items || [];
+
+    // No contract mapping - return order items as-is (normalized fields)
+    return orderItems.map(it => ({
+      name: it.name || it.product_id || it.productId || '',
+      qty: Number(it.qty ?? it.quantity ?? 1),
+      price: Number(it.price ?? 0),
+      total: it.total != null ? Number(it.total) : Number(it.price ?? 0) * Number(it.qty ?? it.quantity ?? 1),
+    } as OrderLineItem));
   };
 
   const ensureDeliveryTasks = (base: WorkflowCategory[], productNames: string[]) => {
@@ -537,7 +577,7 @@ const OrdersManagement = () => {
                   {wfEditMode && (
                     <button onClick={()=>{
                       setWorkflow(w=>{ const n = w? [...w]:[]; n.push({ id: uid(), name: 'Nueva categoría', tasks: [] }); return n;});
-                    }} className="border-2 border-black text-black px-3 py-2 rounded-none hover:bg-black hover:text-white inline-flex items-center gap-2"><Plus size={14}/> Añadir categoría</button>
+                    }} className="border-2 border-black text-black px-3 py-2 rounded-none hover:bg-black hover:text-white inline-flex items-center gap-2"><Plus size={14}/> A��adir categoría</button>
                   )}
                   <div className="ml-auto flex items-center gap-2">
                     <select onChange={(e)=>{ const id = e.target.value; const tpl = templates.find(t=>t.id===id) || null; applyTemplateToOrder(tpl); }} className="border px-2 py-2 rounded-none text-sm">
