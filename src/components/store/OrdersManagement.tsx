@@ -509,6 +509,8 @@ const OrdersManagement = () => {
               if (normalize(cat.name).includes('entrega')) cat.tasks = cat.tasks.map(t => ({ ...t, done: true }));
             });
             await updateDoc(cRef, { workflow: merged, depositPaid: true } as any);
+            // refresh local contracts map so UI reads updated depositPaid
+            await loadContractsMap();
           }
         } catch (e) {
           console.warn('Failed updating contract workflow on mark paid', e);
@@ -517,6 +519,8 @@ const OrdersManagement = () => {
 
       // refresh orders map
       await fetchOrders();
+      // ensure contracts map is fresh after changes
+      await loadContractsMap();
     } finally {
       setSavingWf(false);
     }
@@ -558,6 +562,8 @@ const OrdersManagement = () => {
               if (normalize(cat.name).includes('entrega')) cat.tasks = cat.tasks.map(t => ({ ...t, done: false }));
             });
             await updateDoc(cRef, { workflow: merged, depositPaid: false } as any);
+            // refresh local contracts map so UI reads updated depositPaid
+            await loadContractsMap();
           }
         } catch (e) {
           console.warn('Failed resetting contract workflow', e);
@@ -565,6 +571,8 @@ const OrdersManagement = () => {
       }
 
       await fetchOrders();
+      // ensure contracts map is fresh after changes
+      await loadContractsMap();
     } finally {
       setSavingWf(false);
     }
