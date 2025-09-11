@@ -954,8 +954,27 @@ const OrdersManagement = () => {
                               <div className="text-sm text-gray-600">Restante</div>
                               <div className="flex items-center gap-3">
                                 <div className={`text-sm font-medium ${depositPaid ? 'text-green-600' : 'text-red-600'}`}>R${remaining.toFixed(2)}</div>
-                                <button onClick={markDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded bg-green-600 text-white text-sm">{savingWf ? 'Procesando...' : 'Pagado'}</button>
-                                <button onClick={resetDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded text-sm">Reiniciar</button>
+                                {
+                                  (() => {
+                                    // determine if entrega tasks are all checked in both order (modal workflow) and contract
+                                    const orderEntregaCat = (workflow || []).find((c: any) => normalize(c.name).includes('entrega'));
+                                    const orderEntregaDone = orderEntregaCat ? (orderEntregaCat.tasks || []).every((t: any) => !!t.done) : false;
+                                    let contractEntregaDone = true;
+                                    if (contract && Array.isArray(contract.workflow) && contract.workflow.length) {
+                                      const cCat = (contract.workflow || []).find((c2: any) => normalize(c2.name).includes('entrega'));
+                                      contractEntregaDone = cCat ? (cCat.tasks || []).every((t: any) => !!t.done) : false;
+                                    }
+                                    const allEntregaDone = orderEntregaDone && contractEntregaDone;
+                                    const label = savingWf ? 'Procesando...' : (allEntregaDone ? 'Pagado' : 'Pagar');
+                                    const btnClass = allEntregaDone ? 'px-2 py-1 border rounded bg-green-600 text-white text-sm' : 'px-2 py-1 border rounded bg-yellow-600 text-white text-sm';
+                                    return (
+                                      <>
+                                        <button onClick={markDeliveryPaid} disabled={savingWf} className={btnClass}>{label}</button>
+                                        <button onClick={resetDeliveryPaid} disabled={savingWf} className="px-2 py-1 border rounded text-sm">Reiniciar</button>
+                                      </>
+                                    );
+                                  })()
+                                }
                               </div>
                             </div>
                           </div>
