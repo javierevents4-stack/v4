@@ -176,15 +176,27 @@ const Header = () => {
   const { flags } = useFeatureFlags();
   const navLinks = useMemo(() => {
     const scrollToServices = () => {
-      const el = document.getElementById('nossos-servicos');
-      if (!el) return;
-      const header = document.querySelector('header');
-      const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
-      const rect = el.getBoundingClientRect();
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const extraDown = 80; // push the section a bit lower in the viewport
-      const target = rect.top + scrollTop - headerHeight + extraDown;
-      window.scrollTo({ top: target, behavior: 'smooth' });
+      const doScroll = () => {
+        const el = document.getElementById('nossos-servicos');
+        if (!el) return;
+        const header = document.querySelector('header');
+        const headerHeight = header ? (header as HTMLElement).offsetHeight : 0;
+        const rect = el.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const extraDown = 80; // push the section a bit lower in the viewport
+        const target = rect.top + scrollTop - headerHeight + extraDown;
+        window.scrollTo({ top: target, behavior: 'smooth' });
+      };
+
+      if (location.pathname !== '/') {
+        // navigate to home first, then scroll after a short delay so the DOM mounts
+        navigate('/');
+        setTimeout(() => {
+          try { doScroll(); } catch (e) { /* ignore */ }
+        }, 350);
+      } else {
+        doScroll();
+      }
     };
 
     const links: { name: string; path?: string; action?: () => void; key?: string }[] = [
