@@ -566,8 +566,9 @@ const OrdersManagement = () => {
         if (found) targetContractId = found.id;
       }
 
-      // Force-uncheck entrega tasks in local workflow (modal)
+          // Force-uncheck entrega tasks in local workflow (modal)
       const updatedLocal = (workflow || []).map(cat => ({ ...cat, tasks: cat.tasks.map(t => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : t.done })) }));
+      console.log('[OrdersManagement] resetDeliveryPaid - updatedLocal', { viewingId: viewing.id, updatedLocal });
       setWorkflow(updatedLocal);
       // reflect reset state immediately in the open modal
       setViewing(v => v ? { ...v, depositPaid: false, workflow: updatedLocal, status: 'pendiente' } as any : v);
@@ -580,13 +581,16 @@ const OrdersManagement = () => {
         // ensure we explicitly set entrega tasks to false in stored workflow (in case structure differs)
         try {
           const existing = oSnap.exists() ? (oSnap.data() as any) : null;
+          console.log('[OrdersManagement] resetDeliveryPaid - existing order workflow', existing && existing.workflow ? existing.workflow : null);
           if (existing && Array.isArray(existing.workflow)) {
             orderToSave.workflow = existing.workflow.map((cat: any) => ({ ...cat, tasks: (cat.tasks || []).map((t: any) => ({ ...t, done: normalize(cat.name).includes('entrega') ? false : (t.done||false) })) }));
           }
-        } catch (e) { /* ignore */ }
+        } catch (e) { console.warn('[OrdersManagement] error reading existing order workflow', e); }
         await updateDoc(oRef, orderToSave as any);
+        console.log('[OrdersManagement] resetDeliveryPaid - order updated', viewing.id);
       } catch (e) {
         console.warn('Failed resetting order paid state', e);
+        alert('Error al reiniciar la orden: ' + (e && e.message ? e.message : String(e)));
       }
 
       if (targetContractId) {
@@ -764,12 +768,15 @@ const OrdersManagement = () => {
                                 <input type="checkbox" checked={t.done} onChange={async (e)=>{
                                   const checked = e.target.checked;
                                   if (!workflow || !viewing) return;
+                                  console.log('[OrdersManagement] checkbox change', { viewingId: viewing.id, checked, categoryIndex: ci, taskIndex: ti, taskTitle: t.title });
                                   const updated = workflow.map((c, ci2) => ci2===ci ? { ...c, tasks: c.tasks.map((x, ti2)=> ti2===ti ? { ...x, done: checked } : x) } : c);
                                   setWorkflow(updated);
+                                  console.log('[OrdersManagement] local workflow updated', updated);
                                   try {
                                     const isVirtual = String(viewing.id || '').startsWith('contract-');
                                     if (isVirtual) {
                                       const contractId = viewing.contractId || String(viewing.id || '').replace(/^contract-/, '');
+                                      console.log('[OrdersManagement] isVirtual contractId', contractId);
                                       if (contractId) {
                                         const cRef = doc(db, 'contracts', contractId);
                                         const cSnap = await getDoc(cRef);
@@ -791,18 +798,24 @@ const OrdersManagement = () => {
                                             });
                                           }
                                           await updateDoc(cRef, { workflow: merged } as any);
+                                          console.log('[OrdersManagement] persisted contract workflow for', contractId, merged);
                                           // update local contractsMap so UI reflects contract workflow changes immediately
                                           try { setContractsMap(prev=> ({ ...(prev||{}), [contract.id]: { ...(prev && prev[contract.id]? prev[contract.id]: contract), workflow: merged } })); } catch(e){}
+                                        } else {
+                                          console.warn('[OrdersManagement] contract snapshot missing for', contractId);
                                         }
                                       }
                                     } else {
+                                      console.log('[OrdersManagement] persisting order workflow for', viewing.id);
                                       await updateDoc(doc(db, 'orders', viewing.id), { workflow: updated } as any);
+                                      console.log('[OrdersManagement] order workflow persisted', viewing.id);
                                       let targetContractId = viewing.contractId || null;
                                       if (!targetContractId && viewing.customer_email) {
                                         const key = String(viewing.customer_email).toLowerCase().trim();
                                         const matched = contractsByEmail[key] || Object.values(contractsMap).find((x: any) => String((x.clientEmail || x.client_email || '')).toLowerCase().trim() === key) || null;
                                         if (matched) targetContractId = matched.id;
                                       }
+                                      console.log('[OrdersManagement] resolved targetContractId', targetContractId);
                                       if (targetContractId) {
                                         const cRef = doc(db, 'contracts', targetContractId);
                                         const cSnap = await getDoc(cRef);
@@ -824,13 +837,17 @@ const OrdersManagement = () => {
                                             });
                                           }
                                           await updateDoc(cRef, { workflow: merged } as any);
+                                          console.log('[OrdersManagement] persisted contract workflow from order for', targetContractId, merged);
                                           // update local contractsMap so UI reflects contract workflow changes immediately
                                           try { setContractsMap(prev=> ({ ...(prev||{}), [contract.id]: { ...(prev && prev[contract.id]? prev[contract.id]: contract), workflow: merged } })); } catch(e){}
+                                        } else {
+                                          console.warn('[OrdersManagement] target contract snapshot missing for', targetContractId);
                                         }
                                       }
                                     }
                                   } catch (err) {
                                     console.warn('Error persisting workflow change', err);
+                                    alert('Error al guardar checklist: ' + (err && err.message ? err.message : String(err)));
                                   }
                                 }} />
                               )}
