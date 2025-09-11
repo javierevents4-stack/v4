@@ -6,6 +6,8 @@ import Button from '../components/ui/Button';
 import { useTranslation } from 'react-i18next';
 import { useFeatureFlags } from '../contexts/FeatureFlagsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
   const { t } = useTranslation();
