@@ -161,6 +161,42 @@ const ContractsManagement = () => {
   const openView = async (c: ContractItem) => {
     setWfEditMode(false);
     setViewing(c);
+
+    // Auto-create an order record if the contract has storeItems and no linked order exists
+    try {
+      const hasStoreItems = Array.isArray(c.storeItems) && c.storeItems.length > 0;
+      if (hasStoreItems) {
+        // Check for existing orders with this contractId
+        const existingSnap = await getDocs(query(collection(db, 'orders'), where('contractId', '==', c.id)));
+        if (existingSnap.empty) {
+          // create order from contract store items
+          const items = (c.storeItems || []).map((it: any) => ({
+            name: it.name || it.title || '',
+            quantity: Number(it.quantity ?? it.qty ?? 1),
+            price: Number(it.price ?? 0),
+            total: it.total != null ? Number(it.total) : Number(it.price ?? 0) * Number(it.quantity ?? it.qty ?? 1)
+          }));
+          const totalAmount = items.reduce((s: number, it: any) => s + Number(it.total || 0), 0) + Number(c.travelFee || 0);
+          try {
+            await addDoc(collection(db, 'orders'), {
+              clientName: c.clientName || c.clientName,
+              clientEmail: c.clientEmail || c.clientEmail,
+              items,
+              totalAmount,
+              status: 'pending',
+              paymentMethod: c.paymentMethod || '',
+              contractId: c.id,
+              createdAt: new Date().toISOString()
+            } as any);
+          } catch (e) {
+            console.warn('Failed to auto-create order for contract', c.id, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking/creating order for contract', e);
+    }
+
     const base = (c.workflow && c.workflow.length) ? c.workflow : [];
 
     const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
