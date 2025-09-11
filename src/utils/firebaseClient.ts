@@ -14,7 +14,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+// Use initializeFirestore with long-polling to avoid Fetch/streaming issues in some environments
+export const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
 export const auth = getAuth(app);
 export const storage = getStorage(app, 'gs://wild-pictures-studio-contratos.appspot.com');
 
