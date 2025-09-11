@@ -189,11 +189,8 @@ const Header = () => {
       };
 
       if (location.pathname !== '/') {
-        // navigate to home first, then scroll after a short delay so the DOM mounts
-        navigate('/');
-        setTimeout(() => {
-          try { doScroll(); } catch (e) { /* ignore */ }
-        }, 350);
+        // navigate to home and include state instructing HomePage to scroll when mounted
+        navigate('/', { state: { scrollTo: 'nossos-servicos' } });
       } else {
         doScroll();
       }
