@@ -529,6 +529,19 @@ const OrdersManagement = () => {
       await fetchOrders();
       // ensure contracts map is fresh after changes
       await loadContractsMap();
+
+      // reload the updated order from db and reflect its workflow/depositPaid in modal
+      try {
+        const oRef = doc(db, 'orders', viewing.id);
+        const oSnap = await getDoc(oRef);
+        if (oSnap.exists()) {
+          const oData = { id: oSnap.id, ...(oSnap.data() as any) } as OrderItem;
+          if (oData.workflow && oData.workflow.length) setWorkflow(oData.workflow as WorkflowCategory[]);
+          setViewing(v => v ? { ...v, depositPaid: !!oData.depositPaid, workflow: oData.workflow || v.workflow, status: oData.status || v.status } as any : v);
+        }
+      } catch (e) {
+        // ignore
+      }
     } finally {
       setSavingWf(false);
     }
@@ -590,6 +603,19 @@ const OrdersManagement = () => {
       await fetchOrders();
       // ensure contracts map is fresh after changes
       await loadContractsMap();
+
+      // reload the updated order from db and reflect its workflow/depositPaid in modal
+      try {
+        const oRef = doc(db, 'orders', viewing.id);
+        const oSnap = await getDoc(oRef);
+        if (oSnap.exists()) {
+          const oData = { id: oSnap.id, ...(oSnap.data() as any) } as OrderItem;
+          if (oData.workflow && oData.workflow.length) setWorkflow(oData.workflow as WorkflowCategory[]);
+          setViewing(v => v ? { ...v, depositPaid: !!oData.depositPaid, workflow: oData.workflow || v.workflow, status: oData.status || v.status } as any : v);
+        }
+      } catch (e) {
+        // ignore
+      }
     } finally {
       setSavingWf(false);
     }
