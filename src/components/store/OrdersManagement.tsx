@@ -76,7 +76,7 @@ const OrdersManagement = () => {
     const pid = it.productId || it.product_id || it.productId || it.id;
     if (pid && productsById[pid] && productsById[pid].image_url) return productsById[pid].image_url;
     // Try by name
-    const nameKey = normalize(it.name || it.product_name || it.title || '');
+    const nameKey = normalizeStr(it.name || it.product_name || it.title || '');
     if (nameKey && productsByName[nameKey] && productsByName[nameKey].image_url) return productsByName[nameKey].image_url;
     return undefined;
   };
