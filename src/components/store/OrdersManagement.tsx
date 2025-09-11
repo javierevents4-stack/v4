@@ -781,6 +781,8 @@ const OrdersManagement = () => {
                                             });
                                           }
                                           await updateDoc(cRef, { workflow: merged } as any);
+                                          // update local contractsMap so UI reflects contract workflow changes immediately
+                                          try { setContractsMap(prev=> ({ ...(prev||{}), [contract.id]: { ...(prev && prev[contract.id]? prev[contract.id]: contract), workflow: merged } })); } catch(e){}
                                         }
                                       }
                                     } else {
