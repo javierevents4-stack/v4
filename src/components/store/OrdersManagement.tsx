@@ -83,28 +83,55 @@ const OrdersManagement = () => {
         }
       }
 
-      // If there are no explicit orders, fall back to building 'virtual' orders from contracts
+      // If there are no explicit orders, create per-product orders from contracts when missing
       if ((!items || items.length === 0)) {
         try {
           const csnap = await getDocs(query(collection(db, 'contracts'), orderBy('createdAt', 'desc')));
           const contractsList = csnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-          const virtual: OrderItem[] = contractsList.map((c: any) => {
+
+          const generated: OrderItem[] = [];
+
+          for (const c of contractsList) {
             const storeItems = Array.isArray(c.storeItems) ? c.storeItems : [];
-            const itemsForOrder = storeItems.map((si: any) => ({ name: si.name, quantity: Number(si.quantity || 1), price: Number(si.price || 0), total: Number(si.price || 0) * Number(si.quantity || 1) }));
-            const total = itemsForOrder.reduce((s, it) => s + Number(it.total || 0), 0) + Number(c.travelFee || 0);
-            return {
-              id: `contract-${c.id}`,
-              customer_name: c.clientName || c.client_name || '',
-              customer_email: c.clientEmail || c.client_email || '',
-              items: itemsForOrder,
-              total,
-              created_at: c.contractDate || c.createdAt || new Date().toISOString(),
-              status: 'pendiente',
-              workflow: c.workflow || undefined,
-              contractId: c.id,
-            } as OrderItem;
-          });
-          items = virtual;
+            if (!storeItems.length) continue;
+
+            // check if any orders already exist for this contract
+            try {
+              const existingSnap = await getDocs(query(collection(db, 'orders'), where('contractId', '==', c.id)));
+              if (!existingSnap.empty) {
+                existingSnap.docs.forEach(d => generated.push({ id: d.id, ...(d.data() as any) } as OrderItem));
+                continue;
+              }
+            } catch (e) {
+              // ignore and proceed to create orders
+            }
+
+            for (const si of storeItems) {
+              const qty = Number(si.quantity ?? si.qty ?? 1) || 1;
+              const price = Number(si.price ?? 0) || 0;
+              const total = si.total != null ? Number(si.total) : price * qty;
+
+              const orderData: any = {
+                clientName: c.clientName || c.client_name || '',
+                clientEmail: c.clientEmail || c.client_email || '',
+                items: [{ name: si.name || si.title || '', quantity: qty, price, total }],
+                totalAmount: total + Number(c.travelFee || 0),
+                status: 'pending',
+                paymentMethod: c.paymentMethod || '',
+                contractId: c.id,
+                createdAt: c.contractDate || c.createdAt || new Date().toISOString()
+              };
+
+              try {
+                const refDoc = await addDoc(collection(db, 'orders'), orderData);
+                generated.push({ id: refDoc.id, ...orderData } as OrderItem);
+              } catch (e) {
+                console.warn('Failed to create order for contract', c.id, si, e);
+              }
+            }
+          }
+
+          items = generated;
         } catch (e) {
           console.warn('No se pudieron generar órdenes desde contratos', e);
         }
