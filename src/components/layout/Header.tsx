@@ -209,7 +209,7 @@ const Header = () => {
     ];
     // do not include a separate Admin link here; admin is toggled via the eye icon
     return links.filter(l => !l.key || flags.pages[l.key as keyof typeof flags.pages]);
-  }, [t, flags]);
+  }, [t, flags, location.pathname]);
 
   const isHomePage = location.pathname === '/';
 
