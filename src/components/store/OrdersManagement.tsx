@@ -700,7 +700,16 @@ const OrdersManagement = () => {
                           const total = it.total != null ? Number(it.total) : price * qty;
                           return (
                             <tr key={idx} className="border-t">
-                              <td className="py-1">{it.name || it.product_id || it.productId || '—'}</td>
+                              <td className="py-1">
+                                <div className="flex items-center gap-3">
+                                  { (it.image_url || it.image || (it.product && it.product.image_url)) ? (
+                                    <img src={it.image_url || it.image || it.product?.image_url} alt={String(it.name||'product')} className="w-12 h-12 object-cover rounded" />
+                                  ) : (
+                                    <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-500">No img</div>
+                                  )}
+                                  <div className="truncate">{it.name || it.product_id || it.productId || '��'}</div>
+                                </div>
+                              </td>
                               <td className="py-1">{qty}</td>
                               <td className="py-1">${price.toFixed(0)}</td>
                               <td className="py-1">${total.toFixed(0)}</td>
